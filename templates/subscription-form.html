@@ -1,7 +1,7 @@
 <div class="p-6">
     <div class="flex items-center justify-between mb-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {{if .IsEdit}}Edit{{else}}Add{{end}} Subscription
+            {{if .IsEdit}}{{t .Lang "form.edit_title"}}{{else}}{{t .Lang "form.add_title"}}{{end}}
         </h3>
         <button onclick="document.getElementById('modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors duration-150">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -19,7 +19,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Name -->
             <div class="md:col-span-2">
-                <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Name *</label>
+                <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.name"}} *</label>
                 <input type="text" id="name" name="name" required
                        value="{{if .Subscription}}{{.Subscription.Name}}{{end}}"
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
@@ -28,35 +28,35 @@
             <!-- Label (optional) -->
             <div class="md:col-span-2">
                 <label for="label" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Label <span class="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
+                    {{t .Lang "form.label"}} <span class="text-gray-400 dark:text-gray-500 font-normal">({{t .Lang "common.optional"}})</span>
                 </label>
                 <input type="text" id="label" name="label" maxlength="120"
-                       placeholder="e.g. example.com, Mom's plan, work account"
+                       placeholder="{{t .Lang "form.label_placeholder"}}"
                        value="{{if .Subscription}}{{.Subscription.Label}}{{end}}"
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Helps distinguish multiple subscriptions to the same service.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t .Lang "form.label_help"}}</p>
             </div>
 
             <!-- Tags (optional) -->
             <div class="md:col-span-2">
                 <label for="tags" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Tags <span class="text-gray-400 dark:text-gray-500 font-normal">(optional, comma-separated)</span>
+                    {{t .Lang "form.tags"}} <span class="text-gray-400 dark:text-gray-500 font-normal">({{t .Lang "form.tags_subtitle"}})</span>
                 </label>
                 <input type="text" id="tags" name="tags"
-                       placeholder="e.g. work, family, autopay"
+                       placeholder="{{t .Lang "form.tags_placeholder"}}"
                        value="{{if .TagsCSV}}{{.TagsCSV}}{{end}}"
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Use tags to group subscriptions across categories.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t .Lang "form.tags_help"}}</p>
             </div>
 
             <!-- Category -->
             <div>
-                <label for="category_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category *</label>
+                <label for="category_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.category"}} *</label>
                 <div class="flex gap-2">
                     <div class="flex-1" id="category-select-container">
                         <select id="category_id" name="category_id" required
                                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
-                            <option value="">Select category</option>
+                            <option value="">{{t .Lang "form.category"}}…</option>
                             {{range .Categories}}
                                 <option value="{{.ID}}" {{if $.Subscription}}{{if eq $.Subscription.CategoryID .ID}}selected{{end}}{{end}}>{{.Name}}</option>
                             {{end}}
@@ -64,7 +64,7 @@
                     </div>
                     <button type="button" id="add-category-btn" onclick="showNewCategoryInput()"
                             class="px-3 py-2 text-sm font-medium text-primary bg-primary/10 border border-primary/30 rounded-lg hover:bg-primary/20 transition-colors duration-150"
-                            title="Add new category">
+                            title="{{t .Lang "form.add_category"}}">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
@@ -73,15 +73,15 @@
                 <!-- Inline new category input (hidden by default) -->
                 <div id="new-category-container" class="hidden mt-2">
                     <div class="flex gap-2">
-                        <input type="text" id="new-category-name" placeholder="New category name"
+                        <input type="text" id="new-category-name" placeholder="{{t .Lang "form.new_category_placeholder"}}"
                                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
                         <button type="button" onclick="createNewCategory()"
                                 class="px-3 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors duration-150">
-                            Add
+                            {{t .Lang "form.add"}}
                         </button>
                         <button type="button" onclick="hideNewCategoryInput()"
                                 class="px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-150">
-                            Cancel
+                            {{t .Lang "common.cancel"}}
                         </button>
                     </div>
                     <div id="new-category-error" class="text-sm text-danger mt-1 hidden"></div>
@@ -90,30 +90,30 @@
 
             <!-- Cost -->
             <div>
-                <label for="cost" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cost *</label>
+                <label for="cost" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.cost"}} *</label>
                 <div class="relative">
                     <span class="absolute left-3 top-2 text-gray-500 dark:text-gray-400">{{.CurrencySymbol}}</span>
                     <input type="number" id="cost" name="cost" step="0.01" min="0" required
                            value="{{if .Subscription}}{{.Subscription.Cost}}{{end}}"
                            class="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Total amount charged per billing period.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t .Lang "form.cost_help"}}</p>
             </div>
 
             <!-- Share Count -->
             <div>
                 <label for="share_count" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Shared with <span class="text-gray-400 dark:text-gray-500 font-normal">(people, including you)</span>
+                    {{t .Lang "form.shared_with"}} <span class="text-gray-400 dark:text-gray-500 font-normal">({{t .Lang "form.shared_with_subtitle"}})</span>
                 </label>
                 <input type="number" id="share_count" name="share_count" min="1" step="1"
                        value="{{if .Subscription}}{{if .Subscription.ShareCount}}{{.Subscription.ShareCount}}{{else}}1{{end}}{{else}}1{{end}}"
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Stats will show only your share. Default 1 (not shared).</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{t .Lang "form.shared_with_help"}}</p>
             </div>
 
             <!-- Original Currency -->
             <div>
-                <label for="original_currency" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Currency *</label>
+                <label for="original_currency" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.currency"}} *</label>
                 <select id="original_currency" name="original_currency" required
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
                     {{range .Currencies}}
@@ -124,11 +124,11 @@
 
             <!-- Schedule -->
             <div>
-                <label for="schedule_combo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Schedule *</label>
+                <label for="schedule_combo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.schedule"}} *</label>
                 <select id="schedule_combo" required
                         onchange="updateScheduleFields()"
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
-                    <option value="">Select schedule</option>
+                    <option value="">{{t .Lang "form.schedule_select"}}</option>
                     <optgroup label="Common">
                         <option value="Daily_1">Daily</option>
                         <option value="Weekly_1">Weekly</option>
@@ -152,20 +152,20 @@
 
             <!-- Status -->
             <div>
-                <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status *</label>
+                <label for="status" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.status"}} *</label>
                 <select id="status" name="status" required
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
-                    <option value="">Select status</option>
-                    <option value="Active" {{if .Subscription}}{{if eq .Subscription.Status "Active"}}selected{{end}}{{end}}>Active</option>
-                    <option value="Cancelled" {{if .Subscription}}{{if eq .Subscription.Status "Cancelled"}}selected{{end}}{{end}}>Cancelled</option>
-                    <option value="Paused" {{if .Subscription}}{{if eq .Subscription.Status "Paused"}}selected{{end}}{{end}}>Paused</option>
-                    <option value="Trial" {{if .Subscription}}{{if eq .Subscription.Status "Trial"}}selected{{end}}{{end}}>Trial</option>
+                    <option value="">{{t .Lang "form.status"}}…</option>
+                    <option value="Active" {{if .Subscription}}{{if eq .Subscription.Status "Active"}}selected{{end}}{{end}}>{{t .Lang "form.status_active"}}</option>
+                    <option value="Cancelled" {{if .Subscription}}{{if eq .Subscription.Status "Cancelled"}}selected{{end}}{{end}}>{{t .Lang "form.status_cancelled"}}</option>
+                    <option value="Paused" {{if .Subscription}}{{if eq .Subscription.Status "Paused"}}selected{{end}}{{end}}>{{t .Lang "form.status_paused"}}</option>
+                    <option value="Trial" {{if .Subscription}}{{if eq .Subscription.Status "Trial"}}selected{{end}}{{end}}>{{t .Lang "form.status_trial"}}</option>
                 </select>
             </div>
 
             <!-- Payment Method -->
             <div>
-                <label for="payment_method" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Payment Method</label>
+                <label for="payment_method" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.payment_method"}}</label>
                 <input type="text" id="payment_method" name="payment_method"
                        value="{{if .Subscription}}{{.Subscription.PaymentMethod}}{{end}}"
                        placeholder="e.g., Visa ****1234"
@@ -174,7 +174,7 @@
 
             <!-- Account -->
             <div>
-                <label for="account" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Account</label>
+                <label for="account" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.account"}}</label>
                 <input type="text" id="account" name="account"
                        value="{{if .Subscription}}{{.Subscription.Account}}{{end}}"
                        placeholder="Account email or username"
@@ -183,7 +183,7 @@
 
             <!-- URL -->
             <div class="md:col-span-2">
-                <label for="url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Website URL</label>
+                <label for="url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.url"}}</label>
                 <input type="url" id="url" name="url"
                        value="{{if .Subscription}}{{.Subscription.URL}}{{end}}"
                        placeholder="https://example.com"
@@ -192,7 +192,7 @@
 
             <!-- Start Date -->
             <div>
-                <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Date</label>
+                <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.start_date"}}</label>
                 <input type="date" id="start_date" name="start_date"
                        value="{{if .Subscription}}{{if .Subscription.StartDate}}{{.Subscription.StartDate.Format "2006-01-02"}}{{end}}{{end}}"
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
@@ -202,7 +202,7 @@
             <div>
                 <label for="renewal_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     <span class="flex items-center">
-                        Next Renewal
+                        {{t .Lang "form.renewal_date"}}
                         <div class="relative group ml-1">
                             <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -225,7 +225,7 @@
 
             <!-- Cancellation Date -->
             <div>
-                <label for="cancellation_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cancellation Date</label>
+                <label for="cancellation_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.cancellation_date"}}</label>
                 <input type="date" id="cancellation_date" name="cancellation_date"
                        value="{{if .Subscription}}{{if .Subscription.CancellationDate}}{{.Subscription.CancellationDate.Format "2006-01-02"}}{{end}}{{end}}"
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
@@ -233,20 +233,20 @@
 
             <!-- Usage -->
             <div>
-                <label for="usage" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Usage Level</label>
+                <label for="usage" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.usage"}}</label>
                 <select id="usage" name="usage"
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
-                    <option value="">Select usage</option>
-                    <option value="High" {{if .Subscription}}{{if eq .Subscription.Usage "High"}}selected{{end}}{{end}}>High</option>
-                    <option value="Medium" {{if .Subscription}}{{if eq .Subscription.Usage "Medium"}}selected{{end}}{{end}}>Medium</option>
-                    <option value="Low" {{if .Subscription}}{{if eq .Subscription.Usage "Low"}}selected{{end}}{{end}}>Low</option>
-                    <option value="None" {{if .Subscription}}{{if eq .Subscription.Usage "None"}}selected{{end}}{{end}}>None</option>
+                    <option value="">{{t .Lang "form.usage"}}…</option>
+                    <option value="High" {{if .Subscription}}{{if eq .Subscription.Usage "High"}}selected{{end}}{{end}}>{{t .Lang "form.usage_high"}}</option>
+                    <option value="Medium" {{if .Subscription}}{{if eq .Subscription.Usage "Medium"}}selected{{end}}{{end}}>{{t .Lang "form.usage_medium"}}</option>
+                    <option value="Low" {{if .Subscription}}{{if eq .Subscription.Usage "Low"}}selected{{end}}{{end}}>{{t .Lang "form.usage_low"}}</option>
+                    <option value="None" {{if .Subscription}}{{if eq .Subscription.Usage "None"}}selected{{end}}{{end}}>{{t .Lang "form.usage_none"}}</option>
                 </select>
             </div>
 
             <!-- Notes -->
             <div class="md:col-span-2">
-                <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes</label>
+                <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{t .Lang "form.notes"}}</label>
                 <textarea id="notes" name="notes" rows="3"
                           placeholder="Additional notes about this subscription"
                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">{{if .Subscription}}{{.Subscription.Notes}}{{end}}</textarea>
@@ -259,20 +259,20 @@
                     <input type="checkbox" name="reminder_enabled" value="true"
                            {{if .IsEdit}}{{if .Subscription.ReminderEnabled}}checked{{end}}{{else}}checked{{end}}
                            class="w-4 h-4 text-primary bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-primary focus:ring-2 transition-colors duration-150">
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Send renewal reminders for this subscription</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{t .Lang "form.reminder_enabled"}}</span>
                 </label>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-7">Disable for autopay subscriptions that don't need reminders</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 ml-7">{{t .Lang "form.reminder_enabled_help"}}</p>
             </div>
         </div>
 
         <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <button type="button" onclick="document.getElementById('modal').classList.add('hidden')"
                     class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150">
-                Cancel
+                {{t .Lang "common.cancel"}}
             </button>
             <button type="submit"
                     class="px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-lg hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/80 transition-colors duration-150">
-                {{if .IsEdit}}Update{{else}}Add{{end}} Subscription
+                {{if .IsEdit}}{{t .Lang "common.save"}}{{else}}{{t .Lang "form.add"}}{{end}}
             </button>
         </div>
     </form>

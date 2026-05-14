@@ -45,25 +45,25 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v3H8V5z"></path>
                             </svg>
-                            Dashboard
+                            {{t .Lang "nav.dashboard"}}
                         </a>
                         <a href="/subscriptions" class="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            Subscriptions
+                            {{t .Lang "nav.subscriptions"}}
                         </a>
                         <a href="/analytics" class="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
-                            Analytics
+                            {{t .Lang "nav.analytics"}}
                         </a>
                         <a href="/calendar" class="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
-                            Calendar
+                            {{t .Lang "nav.calendar"}}
                         </a>
                     </nav>
                     <!-- Mobile Hamburger Button -->
@@ -84,7 +84,7 @@
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                         </svg>
-                        Add
+                        {{t .Lang "nav.add"}}
                     </button>
                     <a href="/settings" class="text-primary dark:text-primary-light">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,25 +128,25 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v3H8V5z"></path>
                             </svg>
-                            Dashboard
+                            {{t .Lang "nav.dashboard"}}
                         </a>
                         <a href="/subscriptions" onclick="closeMobileMenu()" class="flex items-center px-4 py-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            Subscriptions
+                            {{t .Lang "nav.subscriptions"}}
                         </a>
                         <a href="/analytics" onclick="closeMobileMenu()" class="flex items-center px-4 py-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
-                            Analytics
+                            {{t .Lang "nav.analytics"}}
                         </a>
                         <a href="/calendar" onclick="closeMobileMenu()" class="flex items-center px-4 py-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
-                            Calendar
+                            {{t .Lang "nav.calendar"}}
                         </a>
                         <div class="pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
                             <button 
@@ -425,7 +425,7 @@
 
             <!-- Data Management -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
-                <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">Data Management</h3>
+                <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.data_management"}}</h3>
                 <div class="space-y-4">
                     <div class="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                         <div>
@@ -440,7 +440,7 @@
                     <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                         <div class="flex items-center justify-between mb-3">
                             <div>
-                                <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200">Restore Backup</h4>
+                                <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200">{{t .Lang "settings.restore_backup"}}</h4>
                                 <p class="text-sm text-blue-800 dark:text-blue-300">Import subscriptions from a backup file</p>
                             </div>
                         </div>
@@ -462,7 +462,7 @@
 
                     <div class="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                         <div>
-                            <h4 class="text-sm font-medium text-red-800 dark:text-red-200">Clear All Data</h4>
+                            <h4 class="text-sm font-medium text-red-800 dark:text-red-200">{{t .Lang "settings.clear_all"}}</h4>
                             <p class="text-sm text-red-700 dark:text-red-300">Permanently delete all subscription data</p>
                         </div>
                         <button
@@ -553,7 +553,7 @@
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">Renewal Reminders</h4>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.renewal_reminders"}}</h4>
                             <p class="text-sm text-gray-600 dark:text-gray-300">Get notified before subscriptions renew</p>
                         </div>
                         <button hx-post="/api/settings/notifications/renewal" 
@@ -601,7 +601,7 @@
                     
                     <div class="flex items-center justify-between">
                         <div>
-                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">Days Before Renewal</h4>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.days_before_renewal"}}</h4>
                             <p class="text-sm text-gray-600 dark:text-gray-300">Single days-before fallback. Use the multi-window field below for multiple reminders.</p>
                         </div>
                         <input type="number"
@@ -617,7 +617,7 @@
 
                     <div class="flex items-start justify-between">
                         <div class="flex-1 pr-4">
-                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">Renewal Reminder Windows</h4>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.reminder_windows"}}</h4>
                             <p class="text-sm text-gray-600 dark:text-gray-300">Comma-separated days before renewal (e.g. <code>7,3,0</code>). One reminder is sent as each threshold is crossed. Leave empty to use the single value above.</p>
                         </div>
                         <input type="text"
@@ -632,7 +632,7 @@
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">Cancellation Reminders</h4>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.cancellation_reminders"}}</h4>
                             <p class="text-sm text-gray-600 dark:text-gray-300">Get notified before subscriptions end</p>
                         </div>
                         <button hx-post="/api/settings/notifications/cancellation"
@@ -646,7 +646,7 @@
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">Days Before Cancellation</h4>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.days_before_cancellation"}}</h4>
                             <p class="text-sm text-gray-600 dark:text-gray-300">Single days-before fallback. Use the multi-window field below for multiple reminders.</p>
                         </div>
                         <input type="number"
@@ -662,7 +662,7 @@
 
                     <div class="flex items-start justify-between">
                         <div class="flex-1 pr-4">
-                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">Cancellation Reminder Windows</h4>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.cancellation_reminder_windows"}}</h4>
                             <p class="text-sm text-gray-600 dark:text-gray-300">Comma-separated days before cancellation. Leave empty to use the single value above.</p>
                         </div>
                         <input type="text"
