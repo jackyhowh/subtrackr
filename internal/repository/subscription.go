@@ -40,12 +40,12 @@ func (r *SubscriptionRepository) Create(subscription *models.Subscription) (*mod
 			err := r.db.Transaction(func(tx *gorm.DB) error {
 				result := tx.Exec(`
 					INSERT INTO subscriptions (
-						name, cost, schedule, schedule_interval, status, category_id, category, original_currency,
+						name, label, cost, schedule, schedule_interval, share_count, status, category_id, category, original_currency,
 						payment_method, account, start_date, renewal_date,
 						cancellation_date, url, icon_url, notes, usage, reminder_enabled,
 						date_calculation_version, created_at, updated_at
-					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-					subscription.Name, subscription.Cost, subscription.Schedule, subscription.ScheduleInterval,
+					) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					subscription.Name, subscription.Label, subscription.Cost, subscription.Schedule, subscription.ScheduleInterval, subscription.ShareCount,
 					subscription.Status, subscription.CategoryID, category.Name, subscription.OriginalCurrency,
 					subscription.PaymentMethod, subscription.Account,
 					subscription.StartDate, subscription.RenewalDate,
@@ -84,7 +84,7 @@ func (r *SubscriptionRepository) Create(subscription *models.Subscription) (*mod
 
 func (r *SubscriptionRepository) GetAll() ([]models.Subscription, error) {
 	var subscriptions []models.Subscription
-	if err := r.db.Preload("Category").Order("created_at DESC").Find(&subscriptions).Error; err != nil {
+	if err := r.db.Preload("Category").Preload("Tags").Order("created_at DESC").Find(&subscriptions).Error; err != nil {
 		return nil, err
 	}
 	return subscriptions, nil
@@ -95,7 +95,7 @@ func (r *SubscriptionRepository) GetAll() ([]models.Subscription, error) {
 // order: asc, desc
 func (r *SubscriptionRepository) GetAllSorted(sortBy, order string) ([]models.Subscription, error) {
 	var subscriptions []models.Subscription
-	query := r.db.Preload("Category")
+	query := r.db.Preload("Category").Preload("Tags")
 
 	// Validate and set sort column
 	validSortColumns := map[string]string{
@@ -134,7 +134,7 @@ func (r *SubscriptionRepository) GetAllSorted(sortBy, order string) ([]models.Su
 
 func (r *SubscriptionRepository) GetByID(id uint) (*models.Subscription, error) {
 	var subscription models.Subscription
-	if err := r.db.Preload("Category").First(&subscription, id).Error; err != nil {
+	if err := r.db.Preload("Category").Preload("Tags").First(&subscription, id).Error; err != nil {
 		return nil, err
 	}
 	return &subscription, nil
@@ -152,9 +152,11 @@ func (r *SubscriptionRepository) Update(id uint, subscription *models.Subscripti
 
 	// Update the existing subscription with new values
 	existing.Name = subscription.Name
+	existing.Label = subscription.Label
 	existing.Cost = subscription.Cost
 	existing.Schedule = subscription.Schedule
 	existing.ScheduleInterval = subscription.ScheduleInterval
+	existing.ShareCount = subscription.ShareCount
 	existing.Status = subscription.Status
 	existing.CategoryID = subscription.CategoryID
 	existing.OriginalCurrency = subscription.OriginalCurrency
@@ -163,8 +165,10 @@ func (r *SubscriptionRepository) Update(id uint, subscription *models.Subscripti
 	existing.StartDate = subscription.StartDate
 	existing.LastReminderSent = subscription.LastReminderSent
 	existing.LastReminderRenewalDate = subscription.LastReminderRenewalDate
+	existing.LastReminderWindow = subscription.LastReminderWindow
 	existing.LastCancellationReminderSent = subscription.LastCancellationReminderSent
 	existing.LastCancellationReminderDate = subscription.LastCancellationReminderDate
+	existing.LastCancellationReminderWindow = subscription.LastCancellationReminderWindow
 	existing.RenewalDate = subscription.RenewalDate
 	existing.CancellationDate = subscription.CancellationDate
 	existing.URL = subscription.URL
@@ -180,9 +184,11 @@ func (r *SubscriptionRepository) Update(id uint, subscription *models.Subscripti
 			// We need to manually set the category name for legacy schema
 			updates := map[string]interface{}{
 				"name":                       existing.Name,
+				"label":                      existing.Label,
 				"cost":                       existing.Cost,
 				"schedule":                   existing.Schedule,
 				"schedule_interval":          existing.ScheduleInterval,
+				"share_count":                existing.ShareCount,
 				"status":                     existing.Status,
 				"category_id":                existing.CategoryID,
 				"category":                   category.Name,
@@ -196,11 +202,13 @@ func (r *SubscriptionRepository) Update(id uint, subscription *models.Subscripti
 				"icon_url":                   existing.IconURL,
 				"notes":                      existing.Notes,
 				"usage":                      existing.Usage,
-				"last_reminder_sent":         existing.LastReminderSent,
-				"last_reminder_renewal_date": existing.LastReminderRenewalDate,
+				"last_reminder_sent":                  existing.LastReminderSent,
+				"last_reminder_renewal_date":          existing.LastReminderRenewalDate,
+				"last_reminder_window":                existing.LastReminderWindow,
 				"reminder_enabled":                    existing.ReminderEnabled,
 				"last_cancellation_reminder_sent":     existing.LastCancellationReminderSent,
 				"last_cancellation_reminder_date":     existing.LastCancellationReminderDate,
+				"last_cancellation_reminder_window":   existing.LastCancellationReminderWindow,
 				"updated_at":                          time.Now(),
 			}
 			if err := r.db.Model(&existing).Where("id = ?", id).Updates(updates).Error; err != nil {
@@ -233,7 +241,7 @@ func (r *SubscriptionRepository) Count() int64 {
 
 func (r *SubscriptionRepository) GetActiveSubscriptions() ([]models.Subscription, error) {
 	var subscriptions []models.Subscription
-	if err := r.db.Preload("Category").Where("status = ?", "Active").Find(&subscriptions).Error; err != nil {
+	if err := r.db.Preload("Category").Preload("Tags").Where("status = ?", "Active").Find(&subscriptions).Error; err != nil {
 		return nil, err
 	}
 	return subscriptions, nil
@@ -241,7 +249,7 @@ func (r *SubscriptionRepository) GetActiveSubscriptions() ([]models.Subscription
 
 func (r *SubscriptionRepository) GetCancelledSubscriptions() ([]models.Subscription, error) {
 	var subscriptions []models.Subscription
-	if err := r.db.Preload("Category").Where("status = ?", "Cancelled").Find(&subscriptions).Error; err != nil {
+	if err := r.db.Preload("Category").Preload("Tags").Where("status = ?", "Cancelled").Find(&subscriptions).Error; err != nil {
 		return nil, err
 	}
 	return subscriptions, nil
@@ -271,8 +279,20 @@ func (r *SubscriptionRepository) GetUpcomingCancellations(days int) ([]models.Su
 
 func (r *SubscriptionRepository) GetCategoryStats() ([]models.CategoryStat, error) {
 	var stats []models.CategoryStat
+	// Divide by COALESCE(share_count,1) so shared subscriptions only count the user's share,
+	// matching the in-Go MonthlyCost/AnnualCost calculations.
 	if err := r.db.Table("subscriptions").
-		Select("categories.name as category, SUM(CASE WHEN subscriptions.schedule = 'Annual' THEN subscriptions.cost/12 WHEN subscriptions.schedule = 'Quarterly' THEN subscriptions.cost/3 WHEN subscriptions.schedule = 'Monthly' THEN subscriptions.cost WHEN subscriptions.schedule = 'Weekly' THEN subscriptions.cost*4.33 WHEN subscriptions.schedule = 'Daily' THEN subscriptions.cost*30.44 ELSE subscriptions.cost END) as amount, COUNT(*) as count").
+		Select(`categories.name as category,
+			SUM(
+				CASE WHEN subscriptions.schedule = 'Annual'    THEN subscriptions.cost/12
+				     WHEN subscriptions.schedule = 'Quarterly' THEN subscriptions.cost/3
+				     WHEN subscriptions.schedule = 'Monthly'   THEN subscriptions.cost
+				     WHEN subscriptions.schedule = 'Weekly'    THEN subscriptions.cost*4.33
+				     WHEN subscriptions.schedule = 'Daily'     THEN subscriptions.cost*30.44
+				     ELSE subscriptions.cost END
+				/ CAST(COALESCE(NULLIF(subscriptions.share_count, 0), 1) AS REAL)
+			) as amount,
+			COUNT(*) as count`).
 		Joins("left join categories on subscriptions.category_id = categories.id").
 		Where("subscriptions.status = ?", "Active").
 		Group("categories.name").

@@ -194,7 +194,7 @@ func TestSubscriptionService_GetSubscriptionsNeedingReminders(t *testing.T) {
 			}
 
 			// Get subscriptions needing reminders
-			result, err := subscriptionService.GetSubscriptionsNeedingReminders(tt.reminderDays)
+			result, err := subscriptionService.GetSubscriptionsNeedingReminders([]int{tt.reminderDays})
 			assert.NoError(t, err, "GetSubscriptionsNeedingReminders should not return error")
 			assert.Equal(t, tt.expectedCount, len(result), tt.description)
 
@@ -313,7 +313,7 @@ func TestSubscriptionService_GetSubscriptionsNeedingReminders_DaysCalculation(t 
 	assert.NoError(t, err)
 
 	// Get subscriptions needing reminders with 7 day window
-	result, err := subscriptionService.GetSubscriptionsNeedingReminders(7)
+	result, err := subscriptionService.GetSubscriptionsNeedingReminders([]int{7})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(result), "Should find one subscription")
 
@@ -386,7 +386,7 @@ func TestSubscriptionService_GetSubscriptionsNeedingReminders_BoundaryCases(t *t
 			err := db.Create(sub).Error
 			assert.NoError(t, err)
 
-			result, err := subscriptionService.GetSubscriptionsNeedingReminders(tt.reminderDays)
+			result, err := subscriptionService.GetSubscriptionsNeedingReminders([]int{tt.reminderDays})
 			assert.NoError(t, err)
 
 			if tt.shouldFind {
@@ -423,7 +423,7 @@ func TestSubscriptionService_GetSubscriptionsNeedingReminders_DuplicatePreventio
 	assert.NoError(t, err)
 
 	// Get subscriptions needing reminders with 7 day window
-	result, err := subscriptionService.GetSubscriptionsNeedingReminders(7)
+	result, err := subscriptionService.GetSubscriptionsNeedingReminders([]int{7})
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(result), "Should not find subscription that already has reminder sent for this renewal date")
 
@@ -434,7 +434,7 @@ func TestSubscriptionService_GetSubscriptionsNeedingReminders_DuplicatePreventio
 	assert.NoError(t, err)
 
 	// Should still not find it (outside reminder window)
-	result, err = subscriptionService.GetSubscriptionsNeedingReminders(7)
+	result, err = subscriptionService.GetSubscriptionsNeedingReminders([]int{7})
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(result), "Should not find subscription outside reminder window")
 
@@ -445,7 +445,7 @@ func TestSubscriptionService_GetSubscriptionsNeedingReminders_DuplicatePreventio
 	assert.NoError(t, err)
 
 	// Should find it now because renewal date changed (different from LastReminderRenewalDate)
-	result, err = subscriptionService.GetSubscriptionsNeedingReminders(7)
+	result, err = subscriptionService.GetSubscriptionsNeedingReminders([]int{7})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(result), "Should find subscription when renewal date changes")
 }
@@ -475,7 +475,7 @@ func TestSubscriptionService_GetSubscriptionsNeedingReminders_ReminderDisabled(t
 	db.Model(sub).Update("reminder_enabled", false)
 
 	// Should not be included in reminders
-	result, err := subscriptionService.GetSubscriptionsNeedingReminders(7)
+	result, err := subscriptionService.GetSubscriptionsNeedingReminders([]int{7})
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(result), "Should not find subscription with reminders disabled")
 
@@ -492,7 +492,7 @@ func TestSubscriptionService_GetSubscriptionsNeedingReminders_ReminderDisabled(t
 	assert.NoError(t, err)
 
 	// Should find only the enabled one
-	result, err = subscriptionService.GetSubscriptionsNeedingReminders(7)
+	result, err = subscriptionService.GetSubscriptionsNeedingReminders([]int{7})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(result), "Should only find subscription with reminders enabled")
 }

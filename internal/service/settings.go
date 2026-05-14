@@ -102,6 +102,20 @@ func (s *SettingsService) GetIntSettingWithDefault(key string, defaultValue int)
 	return value
 }
 
+// SetStringSetting saves a string setting
+func (s *SettingsService) SetStringSetting(key string, value string) error {
+	return s.repo.Set(key, value)
+}
+
+// GetStringSettingWithDefault retrieves a string setting; returns the default if unset or empty.
+func (s *SettingsService) GetStringSettingWithDefault(key string, defaultValue string) string {
+	value, err := s.repo.Get(key)
+	if err != nil || value == "" {
+		return defaultValue
+	}
+	return value
+}
+
 // SetFloatSetting saves a float setting
 func (s *SettingsService) SetFloatSetting(key string, value float64) error {
 	return s.repo.Set(key, fmt.Sprintf("%.2f", value))

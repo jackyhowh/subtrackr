@@ -71,6 +71,9 @@ product-spec.md
 CleanShot*.png
 .playwright-mcp/
 node_modules/
+test-results/
+playwright-report/
+/test-*.png
 server.log
 server
 *.db

@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+	"subtrackr/internal/i18n"
 	"subtrackr/internal/models"
 	"subtrackr/internal/service"
 	"subtrackr/internal/version"
@@ -22,6 +24,7 @@ type SubscriptionWithConversion struct {
 	ConvertedCost         float64 `json:"converted_cost"`
 	ConvertedAnnualCost   float64 `json:"converted_annual_cost"`
 	ConvertedMonthlyCost  float64 `json:"converted_monthly_cost"`
+	ConvertedShareCost    float64 `json:"converted_share_cost"` // Per-period cost in display currency, after share split
 	DisplayCurrency       string  `json:"display_currency"`
 	DisplayCurrencySymbol string  `json:"display_currency_symbol"`
 	ShowConversion        bool    `json:"show_conversion"`
@@ -36,9 +39,11 @@ type SubscriptionHandler struct {
 	webhookService  *service.WebhookService
 	logoService     *service.LogoService
 	categoryService *service.CategoryService
+	tagService      *service.TagService
+	i18nCatalog     *i18n.Catalog
 }
 
-func NewSubscriptionHandler(service *service.SubscriptionService, settingsService *service.SettingsService, currencyService *service.CurrencyService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, logoService *service.LogoService, categoryService *service.CategoryService) *SubscriptionHandler {
+func NewSubscriptionHandler(service *service.SubscriptionService, settingsService *service.SettingsService, currencyService *service.CurrencyService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, logoService *service.LogoService, categoryService *service.CategoryService, tagService *service.TagService, i18nCatalog *i18n.Catalog) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		service:         service,
 		settingsService: settingsService,
@@ -48,7 +53,19 @@ func NewSubscriptionHandler(service *service.SubscriptionService, settingsServic
 		webhookService:  webhookService,
 		logoService:     logoService,
 		categoryService: categoryService,
+		tagService:      tagService,
+		i18nCatalog:     i18nCatalog,
 	}
+}
+
+// activeLang resolves the user-preferred language code, defaulting to "en" when unset
+// or when the requested language has no loaded translations.
+func (h *SubscriptionHandler) activeLang() string {
+	lang := h.settingsService.GetStringSettingWithDefault("lang", "en")
+	if h.i18nCatalog != nil && !h.i18nCatalog.HasLanguage(lang) {
+		return "en"
+	}
+	return lang
 }
 
 // enrichWithCurrencyConversion adds currency conversion info to subscriptions
@@ -74,6 +91,7 @@ func (h *SubscriptionHandler) enrichWithCurrencyConversion(subscriptions []model
 				ratio := convertedCost / sub.Cost
 				enriched.ConvertedAnnualCost = sub.AnnualCost() * ratio
 				enriched.ConvertedMonthlyCost = sub.MonthlyCost() * ratio
+				enriched.ConvertedShareCost = sub.MyShareCost() * ratio
 				enriched.ShowConversion = true
 			}
 		} else if sub.OriginalCurrency != "" && sub.OriginalCurrency != displayCurrency {
@@ -81,6 +99,7 @@ func (h *SubscriptionHandler) enrichWithCurrencyConversion(subscriptions []model
 			enriched.ConvertedCost = sub.Cost
 			enriched.ConvertedAnnualCost = sub.AnnualCost()
 			enriched.ConvertedMonthlyCost = sub.MonthlyCost()
+			enriched.ConvertedShareCost = sub.MyShareCost()
 			enriched.DisplayCurrency = sub.OriginalCurrency
 			enriched.DisplayCurrencySymbol = service.CurrencySymbolForCode(sub.OriginalCurrency)
 		} else {
@@ -88,6 +107,7 @@ func (h *SubscriptionHandler) enrichWithCurrencyConversion(subscriptions []model
 			enriched.ConvertedCost = sub.Cost
 			enriched.ConvertedAnnualCost = sub.AnnualCost()
 			enriched.ConvertedMonthlyCost = sub.MonthlyCost()
+			enriched.ConvertedShareCost = sub.MyShareCost()
 		}
 
 		result[i] = enriched
@@ -152,6 +172,22 @@ func parseScheduleInterval(s string) int {
 	return v
 }
 
+func parseShareCount(s string) int {
+	if s == "" {
+		return 1
+	}
+	v, err := strconv.Atoi(s)
+	if err != nil || v < 1 {
+		return 1
+	}
+	if v > 100 {
+		// Cap at 100; nobody splits a subscription a hundred ways and unbounded ints
+		// invite UI/math weirdness.
+		return 100
+	}
+	return v
+}
+
 // parseDatePtr parses a date string in "2006-01-02" format and returns a pointer to time.Time.
 // Returns nil if the string is empty or if parsing fails.
 // Logs parsing errors for debugging purposes.
@@ -191,6 +227,7 @@ func (h *SubscriptionHandler) Dashboard(c *gin.Context) {
 		"Subscriptions":  enrichedSubs,
 		"CurrencySymbol": h.settingsService.GetCurrencySymbol(),
 		"DarkMode":       h.settingsService.IsDarkModeEnabled(),
+		"Lang":           h.activeLang(),
 	})
 }
 
@@ -219,6 +256,7 @@ func (h *SubscriptionHandler) SubscriptionsList(c *gin.Context) {
 		"SortBy":         sortBy,
 		"Order":          order,
 		"GoDateFormat":   h.settingsService.GetGoDateFormat(),
+		"Lang":           h.activeLang(),
 	})
 }
 
@@ -236,6 +274,7 @@ func (h *SubscriptionHandler) Analytics(c *gin.Context) {
 		"Stats":          stats,
 		"CurrencySymbol": h.settingsService.GetCurrencySymbol(),
 		"DarkMode":       h.settingsService.IsDarkModeEnabled(),
+		"Lang":           h.activeLang(),
 	})
 }
 
@@ -330,6 +369,7 @@ func (h *SubscriptionHandler) Calendar(c *gin.Context) {
 		"DarkMode":                h.settingsService.IsDarkModeEnabled(),
 		"ICalSubscriptionEnabled": icalSubscriptionEnabled,
 		"ICalSubscriptionURL":     icalSubscriptionURL,
+		"Lang":                    h.activeLang(),
 	})
 }
 
@@ -498,9 +538,11 @@ func (h *SubscriptionHandler) Settings(c *gin.Context) {
 		"PushoverConfig":           pushoverConfig,
 		"PushoverConfigured":       pushoverConfigured,
 		"HighCostThreshold":        h.settingsService.GetFloatSettingWithDefault("high_cost_threshold", 50.0),
-		"ReminderDays":             h.settingsService.GetIntSettingWithDefault("reminder_days", 7),
-		"CancellationReminders":    h.settingsService.GetBoolSettingWithDefault("cancellation_reminders", false),
-		"CancellationReminderDays": h.settingsService.GetIntSettingWithDefault("cancellation_reminder_days", 7),
+		"ReminderDays":                 h.settingsService.GetIntSettingWithDefault("reminder_days", 7),
+		"ReminderDaysList":             h.settingsService.GetStringSettingWithDefault("reminder_days_list", ""),
+		"CancellationReminders":        h.settingsService.GetBoolSettingWithDefault("cancellation_reminders", false),
+		"CancellationReminderDays":     h.settingsService.GetIntSettingWithDefault("cancellation_reminder_days", 7),
+		"CancellationReminderDaysList": h.settingsService.GetStringSettingWithDefault("cancellation_reminder_days_list", ""),
 		"DarkMode":                 h.settingsService.IsDarkModeEnabled(),
 		"Version":                  version.GetVersion(),
 		"SMTPConfig":               smtpConfig,
@@ -514,6 +556,8 @@ func (h *SubscriptionHandler) Settings(c *gin.Context) {
 		"DateFormat":               h.settingsService.GetDateFormat(),
 		"WebhookConfig":            webhookConfig,
 		"WebhookConfigured":        webhookConfigured,
+		"Lang":                     h.activeLang(),
+		"Languages":                h.i18nCatalog.AvailableLanguages(),
 	})
 }
 
@@ -541,6 +585,7 @@ func (h *SubscriptionHandler) GetSubscriptions(c *gin.Context) {
 		"SortBy":         sortBy,
 		"Order":          order,
 		"GoDateFormat":   h.settingsService.GetGoDateFormat(),
+		"Lang":           h.activeLang(),
 	})
 }
 
@@ -561,6 +606,7 @@ func (h *SubscriptionHandler) CreateSubscription(c *gin.Context) {
 
 	// Parse form data
 	subscription.Name = c.PostForm("name")
+	subscription.Label = c.PostForm("label")
 	// Parse category_id as uint
 	if categoryIDStr := c.PostForm("category_id"); categoryIDStr != "" {
 		if categoryID, err := strconv.ParseUint(categoryIDStr, 10, 32); err == nil {
@@ -569,6 +615,7 @@ func (h *SubscriptionHandler) CreateSubscription(c *gin.Context) {
 	}
 	subscription.Schedule = c.PostForm("schedule")
 	subscription.ScheduleInterval = parseScheduleInterval(c.PostForm("schedule_interval"))
+	subscription.ShareCount = parseShareCount(c.PostForm("share_count"))
 	subscription.Status = c.PostForm("status")
 	subscription.OriginalCurrency = c.PostForm("original_currency")
 	if subscription.OriginalCurrency == "" {
@@ -623,6 +670,13 @@ func (h *SubscriptionHandler) CreateSubscription(c *gin.Context) {
 		return
 	}
 
+	// Apply tags if provided
+	if tagsInput, ok := c.GetPostForm("tags"); ok {
+		if _, err := h.tagService.SetSubscriptionTags(created.ID, service.ParseTagsInput(tagsInput)); err != nil {
+			log.Printf("Warning: Failed to set tags on new subscription %d: %v", created.ID, err)
+		}
+	}
+
 	// Send high-cost alert email and Pushover notification if applicable
 	if h.isHighCostWithCurrency(created) {
 		// Reload subscription with category for email template
@@ -642,6 +696,40 @@ func (h *SubscriptionHandler) CreateSubscription(c *gin.Context) {
 			if err := h.webhookService.SendHighCostAlert(subscriptionWithCategory); err != nil {
 				log.Printf("Failed to send high-cost alert webhook: %v", err)
 			}
+		}
+	}
+
+	if c.GetHeader("HX-Request") != "" {
+		c.Header("HX-Refresh", "true")
+		c.Status(http.StatusCreated)
+	} else {
+		c.JSON(http.StatusCreated, created)
+	}
+}
+
+// DuplicateSubscription creates a copy of an existing subscription with " (Copy)" appended to the name.
+func (h *SubscriptionHandler) DuplicateSubscription(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	created, tagNames, err := h.service.Duplicate(uint(id))
+	if err != nil {
+		log.Printf("Failed to duplicate subscription %d: %v", id, err)
+		if c.GetHeader("HX-Request") != "" {
+			c.Header("HX-Retarget", "#form-errors")
+			c.HTML(http.StatusBadRequest, "form-errors.html", gin.H{"Error": err.Error()})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	if len(tagNames) > 0 {
+		if _, err := h.tagService.SetSubscriptionTags(created.ID, tagNames); err != nil {
+			log.Printf("Warning: Failed to copy tags onto duplicate of subscription %d: %v", id, err)
 		}
 	}
 
@@ -691,6 +779,9 @@ func (h *SubscriptionHandler) UpdateSubscription(c *gin.Context) {
 	if val, ok := c.GetPostForm("name"); ok {
 		existing.Name = val
 	}
+	if val, ok := c.GetPostForm("label"); ok {
+		existing.Label = val
+	}
 	if val, ok := c.GetPostForm("category_id"); ok && val != "" {
 		if categoryID, err := strconv.ParseUint(val, 10, 32); err == nil {
 			existing.CategoryID = uint(categoryID)
@@ -701,6 +792,9 @@ func (h *SubscriptionHandler) UpdateSubscription(c *gin.Context) {
 	}
 	if val, ok := c.GetPostForm("schedule_interval"); ok {
 		existing.ScheduleInterval = parseScheduleInterval(val)
+	}
+	if val, ok := c.GetPostForm("share_count"); ok {
+		existing.ShareCount = parseShareCount(val)
 	}
 	if val, ok := c.GetPostForm("status"); ok {
 		existing.Status = val
@@ -772,6 +866,13 @@ func (h *SubscriptionHandler) UpdateSubscription(c *gin.Context) {
 			"Error": err.Error(),
 		})
 		return
+	}
+
+	// Apply tags if the field was submitted (allow clearing by submitting empty string)
+	if tagsInput, ok := c.GetPostForm("tags"); ok {
+		if _, err := h.tagService.SetSubscriptionTags(uint(id), service.ParseTagsInput(tagsInput)); err != nil {
+			log.Printf("Warning: Failed to set tags on subscription %d: %v", id, err)
+		}
 	}
 
 	// Send high-cost alert email and Pushover notification if subscription became high-cost (wasn't before, but is now)
@@ -853,12 +954,24 @@ func (h *SubscriptionHandler) GetSubscriptionForm(c *gin.Context) {
 		categories = []models.Category{}
 	}
 
+	// Build comma-separated tag names for the edit form
+	tagsCSV := ""
+	if subscription != nil && len(subscription.Tags) > 0 {
+		names := make([]string, len(subscription.Tags))
+		for i, t := range subscription.Tags {
+			names[i] = t.Name
+		}
+		tagsCSV = strings.Join(names, ", ")
+	}
+
 	c.HTML(http.StatusOK, "subscription-form.html", gin.H{
 		"Subscription":   subscription,
 		"IsEdit":         isEdit,
 		"CurrencySymbol": h.settingsService.GetCurrencySymbol(),
 		"Categories":     categories,
 		"Currencies":     service.GetAvailableCurrencies(),
+		"TagsCSV":        tagsCSV,
+		"Lang":           h.activeLang(),
 	})
 }
 
@@ -929,6 +1042,84 @@ func (h *SubscriptionHandler) ExportJSON(c *gin.Context) {
 		"exported_at":   time.Now(),
 		"total_count":   len(subscriptions),
 	})
+}
+
+// ImportWallos imports subscriptions from a Wallos backup JSON export. Mirrors the
+// shape of RestoreData (Replace/Merge modes) but parses Wallos's schema instead.
+func (h *SubscriptionHandler) ImportWallos(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 10<<20)
+
+	file, _, err := c.Request.FormFile("backup_file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No backup file provided or file too large (max 10 MB)"})
+		return
+	}
+	defer file.Close()
+
+	imported, err := service.ParseWallosBackup(file)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	mode := c.PostForm("mode")
+	if mode == "" {
+		mode = "merge"
+	}
+	if mode != "replace" && mode != "merge" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mode, must be 'replace' or 'merge'"})
+		return
+	}
+
+	if mode == "replace" {
+		existing, err := h.service.GetAll()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch existing data"})
+			return
+		}
+		for _, sub := range existing {
+			if err := h.service.Delete(sub.ID); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clear existing data: %v", err)})
+				return
+			}
+		}
+	}
+
+	categoryMap := make(map[string]uint)
+	categories, _ := h.categoryService.GetAll()
+	for _, cat := range categories {
+		categoryMap[cat.Name] = cat.ID
+	}
+
+	result := service.ImportWallosResult{}
+	for _, sub := range imported {
+		if sub.Category.Name != "" {
+			if catID, ok := categoryMap[sub.Category.Name]; ok {
+				sub.CategoryID = catID
+			} else {
+				newCat := &models.Category{Name: sub.Category.Name}
+				created, err := h.categoryService.Create(newCat)
+				if err == nil {
+					categoryMap[created.Name] = created.ID
+					sub.CategoryID = created.ID
+				}
+			}
+		}
+
+		sub.ID = 0
+		sub.Category = models.Category{}
+		sub.CreatedAt = time.Time{}
+		sub.UpdatedAt = time.Time{}
+
+		if _, err := h.service.Create(&sub); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("Failed to import '%s': %v", sub.Name, err))
+			result.Skipped++
+			continue
+		}
+		result.Imported++
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // BackupData creates a complete backup of all data

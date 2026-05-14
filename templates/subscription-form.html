@@ -25,6 +25,30 @@
                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
             </div>
 
+            <!-- Label (optional) -->
+            <div class="md:col-span-2">
+                <label for="label" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Label <span class="text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
+                </label>
+                <input type="text" id="label" name="label" maxlength="120"
+                       placeholder="e.g. example.com, Mom's plan, work account"
+                       value="{{if .Subscription}}{{.Subscription.Label}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Helps distinguish multiple subscriptions to the same service.</p>
+            </div>
+
+            <!-- Tags (optional) -->
+            <div class="md:col-span-2">
+                <label for="tags" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tags <span class="text-gray-400 dark:text-gray-500 font-normal">(optional, comma-separated)</span>
+                </label>
+                <input type="text" id="tags" name="tags"
+                       placeholder="e.g. work, family, autopay"
+                       value="{{if .TagsCSV}}{{.TagsCSV}}{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Use tags to group subscriptions across categories.</p>
+            </div>
+
             <!-- Category -->
             <div>
                 <label for="category_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category *</label>
@@ -73,6 +97,18 @@
                            value="{{if .Subscription}}{{.Subscription.Cost}}{{end}}"
                            class="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
                 </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Total amount charged per billing period.</p>
+            </div>
+
+            <!-- Share Count -->
+            <div>
+                <label for="share_count" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Shared with <span class="text-gray-400 dark:text-gray-500 font-normal">(people, including you)</span>
+                </label>
+                <input type="number" id="share_count" name="share_count" min="1" step="1"
+                       value="{{if .Subscription}}{{if .Subscription.ShareCount}}{{.Subscription.ShareCount}}{{else}}1{{end}}{{else}}1{{end}}"
+                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-150">
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Stats will show only your share. Default 1 (not shared).</p>
             </div>
 
             <!-- Original Currency -->

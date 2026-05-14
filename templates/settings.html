@@ -180,8 +180,22 @@
         <div class="p-6 space-y-8">
             <!-- Appearance -->
             <div>
-                <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">Appearance</h3>
+                <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.appearance"}}</h3>
                 <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Personalize your SubTrackr experience with beautiful themes</p>
+
+                <!-- Language Selector -->
+                <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg mb-4">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.language"}}</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">{{t .Lang "settings.language_help"}}</p>
+                    </div>
+                    <select id="language-select" onchange="changeLanguage(this.value)"
+                            class="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2">
+                        {{range .Languages}}
+                        <option value="{{.Code}}" {{if eq $.Lang .Code}}selected{{end}}>{{.Name}}</option>
+                        {{end}}
+                    </select>
+                </div>
 
                 <div class="theme-selector" id="theme-selector">
                     <div class="theme-option" data-theme="default" onclick="selectTheme('default')">
@@ -446,6 +460,29 @@
                         <div id="restore-message" class="mt-2 text-sm"></div>
                     </div>
 
+                    <div class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h4 class="text-sm font-medium text-green-900 dark:text-green-200">Import from Wallos</h4>
+                                <p class="text-sm text-green-800 dark:text-green-300">Import subscriptions from a Wallos backup JSON export.</p>
+                            </div>
+                        </div>
+                        <form id="wallos-form" enctype="multipart/form-data" onsubmit="submitWallos(event)">
+                            <div class="flex items-center gap-3">
+                                <input type="file" name="backup_file" id="wallos_file" accept=".json" required
+                                    class="text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-100 file:text-green-700 dark:file:bg-green-800 dark:file:text-green-200 hover:file:bg-green-200 dark:hover:file:bg-green-700">
+                                <select name="mode" class="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2">
+                                    <option value="merge">Merge with existing data</option>
+                                    <option value="replace">Replace existing data</option>
+                                </select>
+                                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 whitespace-nowrap">
+                                    Import
+                                </button>
+                            </div>
+                        </form>
+                        <div id="wallos-message" class="mt-2 text-sm"></div>
+                    </div>
+
                     <div class="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                         <div>
                             <h4 class="text-sm font-medium text-red-800 dark:text-red-200">Clear All Data</h4>
@@ -588,7 +625,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white">Days Before Renewal</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-300">How many days before renewal to send reminder</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Single days-before fallback. Use the multi-window field below for multiple reminders.</p>
                         </div>
                         <input type="number"
                                name="reminder_days"
@@ -599,6 +636,21 @@
                                hx-trigger="change"
                                hx-swap="none"
                                class="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-colors duration-150">
+                    </div>
+
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 pr-4">
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">Renewal Reminder Windows</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Comma-separated days before renewal (e.g. <code>7,3,0</code>). One reminder is sent as each threshold is crossed. Leave empty to use the single value above.</p>
+                        </div>
+                        <input type="text"
+                               name="reminder_days_list"
+                               value="{{.ReminderDaysList}}"
+                               placeholder="7,3,0"
+                               hx-post="/api/settings/notifications/days_list"
+                               hx-trigger="change"
+                               hx-swap="none"
+                               class="w-32 px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-colors duration-150">
                     </div>
 
                     <div class="flex items-center justify-between">
@@ -618,7 +670,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white">Days Before Cancellation</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-300">How many days before cancellation to send reminder</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Single days-before fallback. Use the multi-window field below for multiple reminders.</p>
                         </div>
                         <input type="number"
                                name="cancellation_reminder_days"
@@ -629,6 +681,21 @@
                                hx-trigger="change"
                                hx-swap="none"
                                class="w-16 px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-colors duration-150">
+                    </div>
+
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 pr-4">
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">Cancellation Reminder Windows</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Comma-separated days before cancellation. Leave empty to use the single value above.</p>
+                        </div>
+                        <input type="text"
+                               name="cancellation_reminder_days_list"
+                               value="{{.CancellationReminderDaysList}}"
+                               placeholder="7,3,0"
+                               hx-post="/api/settings/notifications/cancellation_days_list"
+                               hx-trigger="change"
+                               hx-swap="none"
+                               class="w-32 px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-colors duration-150">
                     </div>
                 </div>
             </div>
@@ -1329,6 +1396,56 @@
             })
             .catch(() => {
                 msgDiv.textContent = 'Failed to restore backup';
+                msgDiv.className = 'mt-2 text-sm text-red-600 dark:text-red-400';
+            });
+        }
+
+        function changeLanguage(lang) {
+            fetch('/api/settings/language', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({lang}),
+            })
+            .then(r => r.json())
+            .then(() => location.reload())
+            .catch(err => console.error('Failed to change language', err));
+        }
+
+        function submitWallos(event) {
+            event.preventDefault();
+            const form = document.getElementById('wallos-form');
+            const formData = new FormData(form);
+            const msgDiv = document.getElementById('wallos-message');
+            const mode = formData.get('mode');
+
+            if (mode === 'replace') {
+                if (!confirm('This will replace all existing subscription data with the Wallos import. Continue?')) {
+                    return;
+                }
+            }
+
+            msgDiv.textContent = 'Importing from Wallos...';
+            msgDiv.className = 'mt-2 text-sm text-blue-600 dark:text-blue-400';
+
+            fetch('/api/import/wallos', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(r => r.json().then(data => ({status: r.status, ok: r.ok, data})))
+            .then(({ok, data}) => {
+                if (ok) {
+                    let msg = `Imported ${data.imported} subscription${data.imported === 1 ? '' : 's'}`;
+                    if (data.skipped) msg += `, skipped ${data.skipped}`;
+                    msgDiv.textContent = msg;
+                    msgDiv.className = 'mt-2 text-sm text-green-600 dark:text-green-400';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    msgDiv.textContent = data.error;
+                    msgDiv.className = 'mt-2 text-sm text-red-600 dark:text-red-400';
+                }
+            })
+            .catch(() => {
+                msgDiv.textContent = 'Failed to import from Wallos';
                 msgDiv.className = 'mt-2 text-sm text-red-600 dark:text-red-400';
             });
         }
