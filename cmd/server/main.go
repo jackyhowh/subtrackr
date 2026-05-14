@@ -375,7 +375,6 @@ func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, sett
 		api.GET("/export/ical", handler.ExportICal)
 		api.GET("/backup", handler.BackupData)
 		api.POST("/restore", handler.RestoreData)
-		api.POST("/import/wallos", handler.ImportWallos)
 		api.DELETE("/clear-all", handler.ClearAllData)
 
 		// Settings routes

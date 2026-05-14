@@ -45,7 +45,5 @@
   "settings.appearance": "Apariencia",
   "settings.language": "Idioma",
   "settings.language_help": "Elige el idioma de la interfaz.",
-  "settings.data_management": "Gestión de datos",
-  "settings.import_wallos": "Importar desde Wallos",
-  "settings.import_wallos_help": "Importa suscripciones desde un archivo JSON de respaldo de Wallos."
+  "settings.data_management": "Gestión de datos"
 }
