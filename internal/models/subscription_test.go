@@ -277,35 +277,46 @@ func TestSubscription_MonthlyCost(t *testing.T) {
 func TestSubscription_BeforeCreate_WithStartDate(t *testing.T) {
 	db := setupTestDB(t)
 
+	// Use mid-month (day 10) start dates. AddDate-from-now math could land on
+	// Feb-end (28/29) depending on when the test runs, which would exercise the
+	// V2 month-end-semantics branch that V1 deliberately does not implement.
+	// Mid-month dates avoid that ambiguity and keep the assertions stable
+	// regardless of the calendar date the test executes on.
+	now := time.Now()
+	startOfMonth := func(monthsAgo int) time.Time {
+		t := now.AddDate(0, -monthsAgo, 0)
+		return time.Date(t.Year(), t.Month(), 10, 0, 0, 0, 0, time.UTC)
+	}
+
 	tests := []struct {
-		name         string
-		schedule     string
-		startDate    time.Time
-		description  string
+		name        string
+		schedule    string
+		startDate   time.Time
+		description string
 	}{
 		{
-			name:         "Monthly subscription with past start date",
-			schedule:     "Monthly",
-			startDate:    time.Now().AddDate(0, -2, -15), // 2.5 months ago
-			description:  "Should calculate next monthly anniversary",
+			name:        "Monthly subscription with past start date",
+			schedule:    "Monthly",
+			startDate:   startOfMonth(3), // ~3 months ago, day 10
+			description: "Should calculate next monthly anniversary",
 		},
 		{
-			name:         "Annual subscription with past start date",
-			schedule:     "Annual",
-			startDate:    time.Now().AddDate(0, -6, 0), // 6 months ago
-			description:  "Should calculate next annual anniversary",
+			name:        "Annual subscription with past start date",
+			schedule:    "Annual",
+			startDate:   startOfMonth(6), // ~6 months ago, day 10
+			description: "Should calculate next annual anniversary",
 		},
 		{
-			name:         "Weekly subscription with past start date",
-			schedule:     "Weekly",
-			startDate:    time.Now().AddDate(0, 0, -10), // 10 days ago
-			description:  "Should calculate next weekly anniversary",
+			name:        "Weekly subscription with past start date",
+			schedule:    "Weekly",
+			startDate:   now.AddDate(0, 0, -10), // 10 days ago (day-of-month doesn't matter for weekly)
+			description: "Should calculate next weekly anniversary",
 		},
 		{
-			name:         "Future start date",
-			schedule:     "Monthly",
-			startDate:    time.Now().AddDate(0, 0, 7), // 7 days in future
-			description:  "Should set renewal one month after future start date",
+			name:        "Future start date",
+			schedule:    "Monthly",
+			startDate:   now.AddDate(0, 0, 7), // 7 days in future
+			description: "Should set renewal one month after future start date",
 		},
 	}
 
@@ -319,31 +330,21 @@ func TestSubscription_BeforeCreate_WithStartDate(t *testing.T) {
 				StartDate: &tt.startDate,
 			}
 
-			// Trigger BeforeCreate hook
 			err := sub.BeforeCreate(db)
 			assert.NoError(t, err)
 
-			// Verify renewal date was set
 			assert.NotNil(t, sub.RenewalDate, tt.description)
 			assert.True(t, sub.RenewalDate.After(time.Now()), "Renewal date should be in the future")
 
-			// For past start dates, verify it's the next occurrence
 			if tt.startDate.Before(time.Now()) {
-				// The renewal should be after now but follow the schedule pattern
 				switch tt.schedule {
 				case "Monthly":
-					// Should be on the same day of month as start date, unless start date is month-end
-					startYear, startMonth, _ := tt.startDate.Date()
-					renewalYear, renewalMonth, _ := sub.RenewalDate.Date()
-					startLastDay := time.Date(startYear, startMonth+1, 0, 0, 0, 0, 0, tt.startDate.Location()).Day()
-					renewalLastDay := time.Date(renewalYear, renewalMonth+1, 0, 0, 0, 0, 0, sub.RenewalDate.Location()).Day()
-					if tt.startDate.Day() == startLastDay {
-						assert.Equal(t, renewalLastDay, sub.RenewalDate.Day(), "Renewal date should be last day of month if start date was")
-					} else {
-						assert.Equal(t, tt.startDate.Day(), sub.RenewalDate.Day())
-					}
+					// V1's clamp semantics: renewal day == min(startDay, lastDayOfRenewalMonth).
+					// Since our test start dates use day=10, every renewal month has >= 10 days,
+					// so renewal day should equal the start day exactly.
+					assert.Equal(t, tt.startDate.Day(), sub.RenewalDate.Day(),
+						"Renewal day should match start day for mid-month start dates")
 				case "Annual":
-					// Should be on same month/day as start date
 					assert.Equal(t, tt.startDate.Month(), sub.RenewalDate.Month())
 					assert.Equal(t, tt.startDate.Day(), sub.RenewalDate.Day())
 				}
