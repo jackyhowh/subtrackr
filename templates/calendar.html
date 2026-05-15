@@ -66,7 +66,7 @@
                         </a>
                     </nav>
                     <!-- Mobile Hamburger Button -->
-                    <button id="mobile-menu-button" class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150" aria-label="Open menu">
+                    <button id="mobile-menu-button" class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150" aria-label="{{t .Lang "nav.open_menu"}}">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
@@ -114,7 +114,7 @@
                     <!-- Menu Header -->
                     <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                         <img src="/static/images/logo.svg" alt="SubTrackr" class="h-8 w-auto">
-                        <button onclick="closeMobileMenu()" class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150" aria-label="Close menu">
+                        <button onclick="closeMobileMenu()" class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150" aria-label="{{t .Lang "nav.close_menu"}}">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
@@ -195,7 +195,7 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
                             </svg>
-                            <span id="subscribe-btn-text">Subscribe</span>
+                            <span id="subscribe-btn-text">{{t .Lang "calendar.subscribe_short"}}</span>
                         </button>
                         <input type="hidden" id="cal-subscription-url" value="{{.ICalSubscriptionURL}}">
                         <script>
