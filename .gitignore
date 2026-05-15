@@ -1,84 +1,103 @@
-# Binaries for programs and plugins
+# Go binaries
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-subtrackr
-main
-
-# Beads (keep issues.jsonl and interactions.jsonl for syncing)
-.beads/beads.db
-.beads/config.yaml
-.beads/metadata.json
-.beads/README.md
-.beads/.gitignore
-.beads/export-state/
-
-# Test binary, built with `go test -c`
 *.test
+main
+server
+subtrackr
 
-# Output of the go coverage tool, specifically when used with LiteIDE
+# Go coverage / profile output
 *.out
+*.coverprofile
+cover.html
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
-
-# Go workspace file
+# Go workspace
 go.work
+# vendor/  # uncomment to ignore vendored deps
 
-# Database files
+# Air live reload
+air.toml
+.air.toml
+
+# Editor swap & backup files
+*.swp
+*.swo
+*.swn
+*.bak
+*.orig
+*.rej
+*~
+
+# IDE config
+.idea/
+.vscode/
+
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+.playwright-mcp/
+
+# Python (in case any tooling scripts run here)
+__pycache__/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
+*.tmp
+tmp/
+temp/
+.cache/
+
+# Build output
+dist/
+build/
+
+# Database files (SQLite + WAL)
 data/
 *.db
 *.db-shm
 *.db-wal
+
+# Docker volumes (local dev)
+docker-data/
 
 # Environment variables
 .env
 .env.local
 .env.production
 
-# IDE files
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
+# Beads — keep issues.jsonl and interactions.jsonl for syncing,
+# ignore the daemon/cache state
+.beads/beads.db
+.beads/beads.db-shm
+.beads/beads.db-wal
+.beads/config.yaml
+.beads/metadata.json
+.beads/README.md
+.beads/.gitignore
+.beads/.local_version
+.beads/last-touched
+.beads/daemon.log
+.beads/daemon.pid
+.beads/daemon.lock
+.beads/export-state/
 
-# Plans (not committed yet)
+# Project-specific
+# - plans/ : local planning docs only
+# - RELEASE_NOTES*.md, PLAN-*.md : drafts; GitHub Releases is source of truth
+# - product-spec.md : internal spec, not for the repo
+# - CleanShot*.png : screenshot tool default output
+# - /test-*.png : ad-hoc Playwright screenshots dumped at repo root
 plans/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Log files
-*.log
-
-# Temporary files
-tmp/
-temp/
-
-# Build directories
-dist/
-build/
-
-# Docker volumes (if running locally)
-docker-data/
-
-# Project specific
+RELEASE_NOTES*.md
+PLAN-*.md
 product-spec.md
 CleanShot*.png
-.playwright-mcp/
-node_modules/
-test-results/
-playwright-report/
 /test-*.png
-server.log
-server
-*.db
-data/
-subtrackr
-
-# Release notes (draft files, not committed)
-RELEASE_NOTES*.md
