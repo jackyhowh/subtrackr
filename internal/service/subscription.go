@@ -1,10 +1,40 @@
 package service
 
 import (
+	"sort"
+	"strconv"
+	"strings"
 	"subtrackr/internal/models"
 	"subtrackr/internal/repository"
 	"time"
 )
+
+// ParseReminderWindows parses a comma-separated list of days-before values (e.g. "7,3,0")
+// into a sorted, deduplicated descending list of positive integers. Invalid entries are skipped.
+// If the input is empty and fallbackDays > 0, returns [fallbackDays] for backward compatibility.
+func ParseReminderWindows(csv string, fallbackDays int) []int {
+	seen := make(map[int]bool)
+	out := make([]int, 0, 4)
+	for _, part := range strings.Split(csv, ",") {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+		v, err := strconv.Atoi(trimmed)
+		if err != nil || v < 0 {
+			continue
+		}
+		if !seen[v] {
+			seen[v] = true
+			out = append(out, v)
+		}
+	}
+	if len(out) == 0 && fallbackDays > 0 {
+		return []int{fallbackDays}
+	}
+	sort.Sort(sort.Reverse(sort.IntSlice(out)))
+	return out
+}
 
 type SubscriptionService struct {
 	repo            *repository.SubscriptionRepository
@@ -37,6 +67,41 @@ func (s *SubscriptionService) Update(id uint, subscription *models.Subscription)
 
 func (s *SubscriptionService) Delete(id uint) error {
 	return s.repo.Delete(id)
+}
+
+// Duplicate creates a copy of an existing subscription with " (Copy)" appended to the name.
+// Reminder-tracking fields (LastReminderSent, etc.) are intentionally not copied so the new
+// subscription starts with a clean reminder state. Tag associations are preserved when
+// tagService is provided (handler calls SetSubscriptionTags after Create).
+func (s *SubscriptionService) Duplicate(id uint) (*models.Subscription, []string, error) {
+	original, err := s.repo.GetByID(id)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tagNames := make([]string, len(original.Tags))
+	for i, t := range original.Tags {
+		tagNames[i] = t.Name
+	}
+
+	dup := *original
+	dup.ID = 0
+	dup.Name = original.Name + " (Copy)"
+	dup.Tags = nil
+	dup.LastReminderSent = nil
+	dup.LastReminderRenewalDate = nil
+	dup.LastReminderWindow = -1
+	dup.LastCancellationReminderSent = nil
+	dup.LastCancellationReminderDate = nil
+	dup.LastCancellationReminderWindow = -1
+	dup.CreatedAt = time.Time{}
+	dup.UpdatedAt = time.Time{}
+
+	created, err := s.repo.Create(&dup)
+	if err != nil {
+		return nil, nil, err
+	}
+	return created, tagNames, nil
 }
 
 func (s *SubscriptionService) Count() int64 {
@@ -95,91 +160,129 @@ func (s *SubscriptionService) GetAllCategories() ([]models.Category, error) {
 	return s.categoryService.GetAll()
 }
 
-// GetSubscriptionsNeedingReminders returns subscriptions that need renewal reminders
-// based on the reminder_days setting. It returns a map of subscription to days until renewal.
-func (s *SubscriptionService) GetSubscriptionsNeedingReminders(reminderDays int) (map[*models.Subscription]int, error) {
-	if reminderDays <= 0 {
+// GetSubscriptionsNeedingReminders returns subscriptions that need renewal reminders.
+// `windows` is a list of "days before renewal" thresholds (e.g. [7,3,0]). A subscription
+// fires when daysUntil first crosses below the smallest matching window that hasn't yet
+// fired for the current renewal date. Returns a map of subscription to days until renewal.
+//
+// For backward compatibility, callers passing a single integer should wrap it in []int{n}.
+func (s *SubscriptionService) GetSubscriptionsNeedingReminders(windows []int) (map[*models.Subscription]int, error) {
+	if len(windows) == 0 {
 		return make(map[*models.Subscription]int), nil
 	}
 
-	// Get all subscriptions with renewals in the next reminderDays
-	subscriptions, err := s.repo.GetUpcomingRenewals(reminderDays)
+	maxWindow := 0
+	for _, w := range windows {
+		if w > maxWindow {
+			maxWindow = w
+		}
+	}
+
+	subscriptions, err := s.repo.GetUpcomingRenewals(maxWindow)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make(map[*models.Subscription]int)
+	// Sort windows ascending so we find the smallest matching window first
+	sortedWindows := append([]int{}, windows...)
+	sort.Ints(sortedWindows)
 
+	result := make(map[*models.Subscription]int)
 	for i := range subscriptions {
 		sub := &subscriptions[i]
-		if sub.RenewalDate == nil {
-			continue
-		}
-		if !sub.ReminderEnabled {
+		if sub.RenewalDate == nil || !sub.ReminderEnabled {
 			continue
 		}
 
-		// Calculate days until renewal using proper date arithmetic
-		// Use time.Until for more accurate calculation (handles timezone differences better)
 		daysUntil := int(time.Until(*sub.RenewalDate).Hours() / 24)
+		if daysUntil < 0 || daysUntil > maxWindow {
+			continue
+		}
 
-		// Only include if within the reminder window and not past due
-		if daysUntil >= 0 && daysUntil <= reminderDays {
-			// Check if we've already sent a reminder for this renewal date
-			// Skip if we've sent a reminder for the same renewal date
-			if sub.LastReminderRenewalDate != nil &&
-				sub.RenewalDate != nil &&
-				sub.LastReminderRenewalDate.Equal(*sub.RenewalDate) {
-				// Already sent reminder for this renewal date, skip
+		// Find smallest configured window >= daysUntil
+		matched := -1
+		for _, w := range sortedWindows {
+			if daysUntil <= w {
+				matched = w
+				break
+			}
+		}
+		if matched < 0 {
+			continue
+		}
+
+		// Skip if a reminder has already been fired for this exact renewal date and either:
+		//   a) we don't know which window (legacy state where LastReminderWindow == -1) — preserve
+		//      the historical "one reminder per renewal date" behavior, OR
+		//   b) the same-or-smaller window has already been fired (multi-window state).
+		sameRenewal := sub.LastReminderRenewalDate != nil &&
+			sub.LastReminderRenewalDate.Equal(*sub.RenewalDate)
+		if sameRenewal && sub.LastReminderSent != nil {
+			if sub.LastReminderWindow < 0 || sub.LastReminderWindow <= matched {
 				continue
 			}
-
-			result[sub] = daysUntil
 		}
+
+		result[sub] = daysUntil
 	}
 
 	return result, nil
 }
 
-// GetSubscriptionsNeedingCancellationReminders returns subscriptions that need cancellation reminders
-// based on the cancellation_reminder_days setting. It returns a map of subscription to days until cancellation.
-func (s *SubscriptionService) GetSubscriptionsNeedingCancellationReminders(reminderDays int) (map[*models.Subscription]int, error) {
-	if reminderDays <= 0 {
+// GetSubscriptionsNeedingCancellationReminders returns subscriptions needing cancellation reminders.
+// Same multi-window semantics as GetSubscriptionsNeedingReminders.
+func (s *SubscriptionService) GetSubscriptionsNeedingCancellationReminders(windows []int) (map[*models.Subscription]int, error) {
+	if len(windows) == 0 {
 		return make(map[*models.Subscription]int), nil
 	}
 
-	// Get all subscriptions with cancellations in the next reminderDays
-	subscriptions, err := s.repo.GetUpcomingCancellations(reminderDays)
+	maxWindow := 0
+	for _, w := range windows {
+		if w > maxWindow {
+			maxWindow = w
+		}
+	}
+
+	subscriptions, err := s.repo.GetUpcomingCancellations(maxWindow)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make(map[*models.Subscription]int)
+	sortedWindows := append([]int{}, windows...)
+	sort.Ints(sortedWindows)
 
+	result := make(map[*models.Subscription]int)
 	for i := range subscriptions {
 		sub := &subscriptions[i]
-		if sub.CancellationDate == nil {
-			continue
-		}
-		if !sub.ReminderEnabled {
+		if sub.CancellationDate == nil || !sub.ReminderEnabled {
 			continue
 		}
 
-		// Calculate days until cancellation
 		daysUntil := int(time.Until(*sub.CancellationDate).Hours() / 24)
+		if daysUntil < 0 || daysUntil > maxWindow {
+			continue
+		}
 
-		// Only include if within the reminder window and not past due
-		if daysUntil >= 0 && daysUntil <= reminderDays {
-			// Check if we've already sent a reminder for this cancellation date
-			if sub.LastCancellationReminderDate != nil &&
-				sub.CancellationDate != nil &&
-				sub.LastCancellationReminderDate.Equal(*sub.CancellationDate) {
-				// Already sent reminder for this cancellation date, skip
+		matched := -1
+		for _, w := range sortedWindows {
+			if daysUntil <= w {
+				matched = w
+				break
+			}
+		}
+		if matched < 0 {
+			continue
+		}
+
+		sameDate := sub.LastCancellationReminderDate != nil &&
+			sub.LastCancellationReminderDate.Equal(*sub.CancellationDate)
+		if sameDate && sub.LastCancellationReminderSent != nil {
+			if sub.LastCancellationReminderWindow < 0 || sub.LastCancellationReminderWindow <= matched {
 				continue
 			}
-
-			result[sub] = daysUntil
 		}
+
+		result[sub] = daysUntil
 	}
 
 	return result, nil

@@ -249,6 +249,31 @@ func (h *SettingsHandler) UpdateNotificationSetting(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid days value"})
 		}
 
+	case "days_list", "cancellation_days_list":
+		// Validate CSV of non-negative ints, dedupe, sort descending, clamp count.
+		formKey := "reminder_days_list"
+		settingKey := "reminder_days_list"
+		if setting == "cancellation_days_list" {
+			formKey = "cancellation_reminder_days_list"
+			settingKey = "cancellation_reminder_days_list"
+		}
+		raw := c.PostForm(formKey)
+		parsed := service.ParseReminderWindows(raw, 0)
+		if len(parsed) > 10 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Up to 10 reminder windows allowed"})
+			return
+		}
+		// Re-serialize cleaned values so storage is canonical.
+		cleaned := make([]string, len(parsed))
+		for i, v := range parsed {
+			cleaned[i] = strconv.Itoa(v)
+		}
+		if err := h.service.SetStringSetting(settingKey, strings.Join(cleaned, ",")); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"days_list": cleaned})
+
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Unknown setting"})
 	}
@@ -842,6 +867,28 @@ func (h *SettingsHandler) UpdateBaseURL(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"base_url": baseURL,
 	})
+}
+
+// SetLanguage saves the user's preferred UI language. Accepts a form-encoded `lang`
+// value or a JSON {"lang":"<code>"} body. Validates against the loaded i18n catalog.
+func (h *SettingsHandler) SetLanguage(c *gin.Context, validator func(string) bool) {
+	lang := strings.TrimSpace(c.PostForm("lang"))
+	if lang == "" {
+		var req struct {
+			Lang string `json:"lang"`
+		}
+		_ = c.ShouldBindJSON(&req)
+		lang = strings.TrimSpace(req.Lang)
+	}
+	if lang == "" || !validator(lang) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported language"})
+		return
+	}
+	if err := h.service.SetStringSetting("lang", lang); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save language"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"lang": lang})
 }
 
 // SetTheme saves the theme preference

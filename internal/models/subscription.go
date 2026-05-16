@@ -11,12 +11,14 @@ import (
 type Subscription struct {
 	ID                           uint       `json:"id" gorm:"primaryKey"`
 	Name                         string     `json:"name" gorm:"not null" validate:"required"`
+	Label                        string     `json:"label" gorm:"size:120"` // Optional sub-label to distinguish multiple subs of the same service (e.g. domain name, family member)
 	Cost                         float64    `json:"cost" gorm:"not null" validate:"required,gt=0"`
 	OriginalCurrency             string     `json:"original_currency" gorm:"size:3;default:'USD'"`
 	Schedule                     string     `json:"schedule" gorm:"not null" validate:"required,oneof=Monthly Annual Weekly Daily Quarterly"`
 	Status                       string     `json:"status" gorm:"not null" validate:"required,oneof=Active Cancelled Paused Trial"`
 	CategoryID                   uint       `json:"category_id"`
 	Category                     Category   `json:"category" gorm:"foreignKey:CategoryID"`
+	Tags                         []Tag      `json:"tags" gorm:"many2many:subscription_tags;"`
 	PaymentMethod                string     `json:"payment_method" gorm:""`
 	Account                      string     `json:"account" gorm:""`
 	StartDate                    *time.Time `json:"start_date" gorm:""`
@@ -27,12 +29,15 @@ type Subscription struct {
 	Notes                        string     `json:"notes" gorm:""`
 	Usage                        string     `json:"usage" gorm:"" validate:"omitempty,oneof=High Medium Low None"`
 	ScheduleInterval             int        `json:"schedule_interval" gorm:"default:1"`
+	ShareCount                   int        `json:"share_count" gorm:"default:1"` // Number of people splitting this subscription; 1 means not shared
 	ReminderEnabled              bool       `json:"reminder_enabled" gorm:"default:true"`
 	DateCalculationVersion       int        `json:"date_calculation_version" gorm:"default:1"`
 	LastReminderSent             *time.Time `json:"last_reminder_sent" gorm:""`              // Tracks when the last reminder was sent
 	LastReminderRenewalDate      *time.Time `json:"last_reminder_renewal_date" gorm:""`      // Tracks which renewal date the last reminder was for
+	LastReminderWindow           int        `json:"last_reminder_window" gorm:"default:-1"`  // Smallest days-until window we've already fired for the current renewal date; -1 = none yet
 	LastCancellationReminderSent *time.Time `json:"last_cancellation_reminder_sent" gorm:""` // Tracks when the last cancellation reminder was sent
 	LastCancellationReminderDate *time.Time `json:"last_cancellation_reminder_date" gorm:""` // Tracks which cancellation date the last reminder was for
+	LastCancellationReminderWindow int      `json:"last_cancellation_reminder_window" gorm:"default:-1"`
 	CreatedAt                    time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt                    time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }
@@ -42,6 +47,24 @@ func (s *Subscription) effectiveInterval() int {
 		return 1
 	}
 	return s.ScheduleInterval
+}
+
+func (s *Subscription) effectiveShareCount() int {
+	if s.ShareCount <= 0 {
+		return 1
+	}
+	return s.ShareCount
+}
+
+// MyShareCost returns the user's share of the subscription cost per billing period.
+// When ShareCount > 1, this is Cost / ShareCount; otherwise the full Cost.
+func (s *Subscription) MyShareCost() float64 {
+	return s.Cost / float64(s.effectiveShareCount())
+}
+
+// IsShared returns true when the subscription is split with at least one other person.
+func (s *Subscription) IsShared() bool {
+	return s.effectiveShareCount() > 1
 }
 
 // DisplaySchedule returns a human-friendly schedule label
@@ -60,41 +83,45 @@ func (s *Subscription) DisplaySchedule() string {
 	return s.Schedule
 }
 
-// AnnualCost calculates the annual cost based on schedule
+// AnnualCost calculates the annual cost based on schedule, divided by ShareCount
+// so reported spend reflects only the user's share of any split subscription.
 func (s *Subscription) AnnualCost() float64 {
 	interval := s.effectiveInterval()
+	share := float64(s.effectiveShareCount())
 	switch s.Schedule {
 	case "Annual":
-		return s.Cost / float64(interval)
+		return s.Cost / float64(interval) / share
 	case "Quarterly":
-		return s.Cost * 4 / float64(interval)
+		return s.Cost * 4 / float64(interval) / share
 	case "Monthly":
-		return s.Cost * 12 / float64(interval)
+		return s.Cost * 12 / float64(interval) / share
 	case "Weekly":
-		return s.Cost * 52 / float64(interval)
+		return s.Cost * 52 / float64(interval) / share
 	case "Daily":
-		return s.Cost * 365 / float64(interval)
+		return s.Cost * 365 / float64(interval) / share
 	default:
-		return s.Cost * 12 / float64(interval)
+		return s.Cost * 12 / float64(interval) / share
 	}
 }
 
-// MonthlyCost calculates the monthly cost based on schedule
+// MonthlyCost calculates the monthly cost based on schedule, divided by ShareCount
+// so reported spend reflects only the user's share of any split subscription.
 func (s *Subscription) MonthlyCost() float64 {
 	interval := s.effectiveInterval()
+	share := float64(s.effectiveShareCount())
 	switch s.Schedule {
 	case "Annual":
-		return s.Cost / (12 * float64(interval))
+		return s.Cost / (12 * float64(interval)) / share
 	case "Quarterly":
-		return s.Cost / (3 * float64(interval))
+		return s.Cost / (3 * float64(interval)) / share
 	case "Monthly":
-		return s.Cost / float64(interval)
+		return s.Cost / float64(interval) / share
 	case "Weekly":
-		return s.Cost * 4.33 / float64(interval)
+		return s.Cost * 4.33 / float64(interval) / share
 	case "Daily":
-		return s.Cost * 30.44 / float64(interval)
+		return s.Cost * 30.44 / float64(interval) / share
 	default:
-		return s.Cost / float64(interval)
+		return s.Cost / float64(interval) / share
 	}
 }
 

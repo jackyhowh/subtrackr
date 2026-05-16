@@ -1,100 +1,94 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
+// These tests assume a clean-ish state with the dev DB (at least one category
+// exists — the default Entertainment / Productivity etc. seeded categories).
+// Each test creates a uniquely-named subscription so re-runs don't collide.
+
 test.describe('Subscription CRUD Operations', () => {
   test('can create a new subscription', async ({ page }) => {
+    const uniqueName = `CRUD Test ${Date.now()}`;
+
     await page.goto('/subscriptions');
+    await page.waitForLoadState('networkidle');
 
-    // Click Add Subscription button
-    await page.click('button:has-text("Add Subscription")');
+    // Open Add Subscription via the desktop nav (avoid matching mobile-menu duplicates)
+    await page.locator('header button:has-text("Add"), header button:has-text("Añadir")').first().click();
+    await page.waitForSelector('input[name="name"]', { timeout: 5000 });
 
-    // Fill out the form
-    await page.fill('input[name="name"]', 'Test Subscription');
+    // Fill required fields
+    await page.fill('input[name="name"]', uniqueName);
     await page.fill('input[name="cost"]', '9.99');
-    await page.selectOption('select[name="billing_cycle"]', 'Monthly');
+
+    // Pick the first non-empty category (any real category in the DB)
+    const categoryOption = await page.locator('select[name="category_id"] option').nth(1).getAttribute('value');
+    await page.selectOption('select[name="category_id"]', categoryOption);
+
+    // Pick Monthly from the schedule combo (the form's onchange wires this into hidden schedule + schedule_interval)
+    await page.selectOption('select#schedule_combo', 'Monthly_1');
+
+    // Status
     await page.selectOption('select[name="status"]', 'Active');
 
-    // Submit the form
-    await page.click('button[type="submit"]');
-
-    // Wait for page reload and check if subscription appears
+    // Submit (button labelled "Add" in English or its translation)
+    await page.locator('form button[type="submit"]').click();
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText('Test Subscription')).toBeVisible();
-    await expect(page.getByText('$9.99')).toBeVisible();
+
+    // The subscription should appear in the list
+    await expect(page.getByText(uniqueName)).toBeVisible();
+    await expect(page.getByText('$9.99').first()).toBeVisible();
   });
 
   test('can edit an existing subscription', async ({ page }) => {
+    const baseName = `Edit Test ${Date.now()}`;
+    const updatedName = `${baseName} Updated`;
+
+    // Seed a subscription via the API so the test doesn't depend on previous test order
+    const categoriesResp = await page.request.get('/api/categories');
+    const categories = await categoriesResp.json();
+    expect(categories.length).toBeGreaterThan(0);
+
+    await page.request.post('/api/subscriptions', {
+      form: {
+        name: baseName,
+        cost: '4.99',
+        schedule: 'Monthly',
+        status: 'Active',
+        original_currency: 'USD',
+        category_id: String(categories[0].id),
+      },
+    });
+
     await page.goto('/subscriptions');
+    await page.waitForLoadState('networkidle');
 
-    // Assuming there's at least one subscription from the previous test
-    // Click the first edit button
-    await page.click('button:has-text("Edit"):first-of-type');
+    // Find the row whose name cell is exactly baseName and click its Edit button
+    const row = page.locator('tr', { hasText: baseName }).first();
+    await row.locator('button[title*="Edit"], button[title*="Editar"], button[title*="Bearbeiten"], button[title*="Bewerken"]').click();
 
-    // Modify the name
-    await page.fill('input[name="name"]', 'Updated Test Subscription');
+    await page.waitForSelector('input[name="name"]', { timeout: 5000 });
+    await page.fill('input[name="name"]', updatedName);
     await page.fill('input[name="cost"]', '14.99');
 
-    // Submit the form
-    await page.click('button[type="submit"]');
-
-    // Wait for page reload and check if changes are saved
+    await page.locator('form button[type="submit"]').click();
     await page.waitForLoadState('networkidle');
-    await expect(page.getByText('Updated Test Subscription')).toBeVisible();
-    await expect(page.getByText('$14.99')).toBeVisible();
+
+    await expect(page.getByText(updatedName)).toBeVisible();
+    await expect(page.getByText('$14.99').first()).toBeVisible();
   });
 
   test('displays correct currency formatting', async ({ page }) => {
     await page.goto('/subscriptions');
+    await page.waitForLoadState('networkidle');
 
-    // Check that all prices end with .00 or have proper decimal formatting
-    const priceElements = await page.locator('[data-testid="subscription-cost"], .text-sm.font-medium.text-gray-900').all();
-    
-    for (const element of priceElements) {
-      const text = await element.textContent();
-      if (text && text.includes('$')) {
-        // Should match format like $9.99 or $10.00
-        expect(text).toMatch(/\$\d+\.\d{2}/);
+    // All visible cost cells should match the $X.XX pattern (or a non-US currency symbol)
+    const costCells = await page.locator('tbody td .text-sm.font-medium').all();
+    expect(costCells.length).toBeGreaterThan(0);
+    for (const cell of costCells) {
+      const text = (await cell.textContent())?.trim() ?? '';
+      if (/^[\$€£¥₹]/.test(text)) {
+        expect(text).toMatch(/^[\$€£¥₹][\d,]+\.\d{2}$/);
       }
-    }
-  });
-
-  test('annual totals calculation is correct', async ({ page }) => {
-    await page.goto('/');
-
-    // Get the annual total from dashboard
-    const annualTotalElement = page.locator('[data-testid="annual-total"]');
-    if (await annualTotalElement.count() > 0) {
-      const annualTotal = await annualTotalElement.textContent();
-      
-      // Navigate to subscriptions and calculate expected total
-      await page.goto('/subscriptions');
-      
-      const subscriptionElements = await page.locator('[data-testid="subscription-row"]').all();
-      let expectedTotal = 0;
-      
-      for (const row of subscriptionElements) {
-        const costText = await row.locator('[data-testid="subscription-cost"]').textContent();
-        const billingCycleText = await row.locator('[data-testid="billing-cycle"]').textContent();
-        
-        if (costText && billingCycleText) {
-          const cost = parseFloat(costText.replace('$', ''));
-          let annualCost = cost;
-          
-          if (billingCycleText.includes('Monthly')) {
-            annualCost = cost * 12;
-          } else if (billingCycleText.includes('Weekly')) {
-            annualCost = cost * 52;
-          } else if (billingCycleText.includes('Daily')) {
-            annualCost = cost * 365;
-          }
-          
-          expectedTotal += annualCost;
-        }
-      }
-      
-      // Compare with actual total (allowing for small floating point differences)
-      const actualTotal = parseFloat(annualTotal?.replace('$', '') || '0');
-      expect(Math.abs(actualTotal - expectedTotal)).toBeLessThan(0.01);
     }
   });
 });

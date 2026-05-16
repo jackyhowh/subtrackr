@@ -44,29 +44,29 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v3H8V5z"></path>
                             </svg>
-                            Dashboard
+                            {{t .Lang "nav.dashboard"}}
                         </a>
                         <a href="/subscriptions" class="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            Subscriptions
+                            {{t .Lang "nav.subscriptions"}}
                         </a>
                         <a href="/analytics" class="flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-light">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
-                            Analytics
+                            {{t .Lang "nav.analytics"}}
                         </a>
                         <a href="/calendar" class="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
-                            Calendar
+                            {{t .Lang "nav.calendar"}}
                         </a>
                     </nav>
                     <!-- Mobile Hamburger Button -->
-                    <button id="mobile-menu-button" class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150" aria-label="Open menu">
+                    <button id="mobile-menu-button" class="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150" aria-label="{{t .Lang "nav.open_menu"}}">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
@@ -83,7 +83,7 @@
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                         </svg>
-                        Add
+                        {{t .Lang "nav.add"}}
                     </button>
                     <a href="/settings" class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-150">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,7 +114,7 @@
                     <!-- Menu Header -->
                     <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                         <img src="/static/images/logo.svg" alt="SubTrackr" class="h-8 w-auto">
-                        <button onclick="closeMobileMenu()" class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150" aria-label="Close menu">
+                        <button onclick="closeMobileMenu()" class="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150" aria-label="{{t .Lang "nav.close_menu"}}">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                             </svg>
@@ -127,25 +127,25 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v3H8V5z"></path>
                             </svg>
-                            Dashboard
+                            {{t .Lang "nav.dashboard"}}
                         </a>
                         <a href="/subscriptions" onclick="closeMobileMenu()" class="flex items-center px-4 py-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
-                            Subscriptions
+                            {{t .Lang "nav.subscriptions"}}
                         </a>
                         <a href="/analytics" onclick="closeMobileMenu()" class="flex items-center px-4 py-3 rounded-lg text-sm font-medium bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-light">
                             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                             </svg>
-                            Analytics
+                            {{t .Lang "nav.analytics"}}
                         </a>
                         <a href="/calendar" onclick="closeMobileMenu()" class="flex items-center px-4 py-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150">
                             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
-                            Calendar
+                            {{t .Lang "nav.calendar"}}
                         </a>
                         <div class="pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
                             <button 
@@ -172,19 +172,19 @@
 <!-- Stats Overview -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Total Monthly Spend</h3>
+        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">{{t .Lang "analytics.total_monthly_spend"}}</h3>
         <p class="text-2xl font-bold text-primary">{{.CurrencySymbol}}{{printf "%.2f" .Stats.TotalMonthlySpend}}</p>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Across {{.Stats.ActiveSubscriptions}} active subscriptions</p>
     </div>
     
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Total Annual Spend</h3>
+        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">{{t .Lang "analytics.total_annual_spend"}}</h3>
         <p class="text-2xl font-bold text-success">{{.CurrencySymbol}}{{printf "%.2f" .Stats.TotalAnnualSpend}}</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Projected yearly cost</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{t .Lang "analytics.projected_yearly"}}</p>
     </div>
     
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Annual Savings</h3>
+        <h3 class="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">{{t .Lang "analytics.annual_savings"}}</h3>
         <p class="text-2xl font-bold text-danger">{{.CurrencySymbol}}{{printf "%.2f" .Stats.TotalSaved}}</p>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">From {{.Stats.CancelledSubscriptions}} cancelled subscriptions</p>
     </div>
@@ -194,7 +194,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
     <!-- Category Spending Chart -->
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Spending by Category</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">{{t .Lang "analytics.spending_by_category"}}</h3>
         <div class="space-y-4">
             {{range $category, $amount := .Stats.CategorySpending}}
             <div class="flex items-center justify-between">
@@ -216,12 +216,12 @@
     
     <!-- Subscription Status -->
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Subscription Status</h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">{{t .Lang "analytics.subscription_status"}}</h3>
         <div class="space-y-4">
             <div class="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/50 rounded-lg transition-colors duration-200">
                 <div class="flex items-center">
                     <div class="w-3 h-3 bg-success rounded-full mr-3"></div>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Active</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{t .Lang "analytics.active"}}</span>
                 </div>
                 <span class="text-lg font-bold text-success">{{.Stats.ActiveSubscriptions}}</span>
             </div>
@@ -229,7 +229,7 @@
             <div class="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/50 rounded-lg transition-colors duration-200">
                 <div class="flex items-center">
                     <div class="w-3 h-3 bg-danger rounded-full mr-3"></div>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Cancelled</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{t .Lang "analytics.cancelled"}}</span>
                 </div>
                 <span class="text-lg font-bold text-danger">{{.Stats.CancelledSubscriptions}}</span>
             </div>
@@ -237,7 +237,7 @@
             <div class="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/50 rounded-lg transition-colors duration-200">
                 <div class="flex items-center">
                     <div class="w-3 h-3 bg-warning rounded-full mr-3"></div>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Upcoming Renewals</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{t .Lang "analytics.upcoming_renewals"}}</span>
                 </div>
                 <span class="text-lg font-bold text-warning">{{.Stats.UpcomingRenewals}}</span>
             </div>
@@ -247,16 +247,16 @@
 
 <!-- Cost Analysis -->
 <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Cost Analysis</h3>
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">{{t .Lang "analytics.cost_analysis"}}</h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="text-center p-4 bg-blue-50 dark:bg-blue-900/50 rounded-lg transition-colors duration-200">
             <p class="text-2xl font-bold text-primary">{{.CurrencySymbol}}{{printf "%.2f" (div .Stats.TotalMonthlySpend 30)}}</p>
-            <p class="text-sm text-gray-600 dark:text-gray-300">Average Daily Cost</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300">{{t .Lang "analytics.avg_daily_cost"}}</p>
         </div>
         
         <div class="text-center p-4 bg-green-50 dark:bg-green-900/50 rounded-lg transition-colors duration-200">
             <p class="text-2xl font-bold text-success">{{.CurrencySymbol}}{{printf "%.2f" .Stats.TotalMonthlySpend}}</p>
-            <p class="text-sm text-gray-600 dark:text-gray-300">Total Monthly Cost</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300">{{t .Lang "analytics.total_monthly_cost"}}</p>
         </div>
     </div>
 </div>

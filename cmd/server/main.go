@@ -13,6 +13,7 @@ import (
 	"subtrackr/internal/config"
 	"subtrackr/internal/database"
 	"subtrackr/internal/handlers"
+	"subtrackr/internal/i18n"
 	"subtrackr/internal/middleware"
 	"subtrackr/internal/repository"
 	"subtrackr/internal/service"
@@ -50,11 +51,13 @@ func main() {
 	settingsRepo := repository.NewSettingsRepository(db)
 	categoryRepo := repository.NewCategoryRepository(db)
 	exchangeRateRepo := repository.NewExchangeRateRepository(db)
+	tagRepo := repository.NewTagRepository(db)
 
 	// Initialize services
 	categoryService := service.NewCategoryService(categoryRepo)
 	currencyService := service.NewCurrencyService(exchangeRateRepo)
 	subscriptionService := service.NewSubscriptionService(subscriptionRepo, categoryService)
+	tagService := service.NewTagService(tagRepo)
 	settingsService := service.NewSettingsService(settingsRepo)
 	emailService := service.NewEmailService(settingsService)
 	pushoverService := service.NewPushoverService(settingsService)
@@ -79,8 +82,16 @@ func main() {
 	}
 	sessionService := service.NewSessionService(sessionSecret)
 
+	// Load translation catalog (UI strings). Failure is non-fatal: keys fall back to themselves.
+	i18nCatalog := i18n.NewCatalog()
+	if err := i18nCatalog.LoadDir("web/locales"); err != nil {
+		log.Printf("Warning: i18n catalog could not be loaded (%v) - UI will render English fallbacks", err)
+	} else {
+		log.Printf("Loaded UI translations for %d language(s)", len(i18nCatalog.AvailableLanguages()))
+	}
+
 	// Initialize handlers
-	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService, settingsService, currencyService, emailService, pushoverService, webhookService, logoService, categoryService)
+	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService, settingsService, currencyService, emailService, pushoverService, webhookService, logoService, categoryService, tagService, i18nCatalog)
 	settingsHandler := handlers.NewSettingsHandler(settingsService)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 	authHandler := handlers.NewAuthHandler(settingsService, sessionService, emailService)
@@ -126,10 +137,13 @@ func main() {
 		"fmtTime": func(t time.Time, format string) string {
 			return t.Format(format)
 		},
+		"t": func(lang, key string) string {
+			return i18nCatalog.T(lang, key)
+		},
 	})
 
 	// Load HTML templates with error handling
-	tmpl := loadTemplates()
+	tmpl := loadTemplates(i18nCatalog)
 	if tmpl != nil && len(tmpl.Templates()) > 0 {
 		router.SetHTMLTemplate(tmpl)
 	} else {
@@ -173,7 +187,7 @@ func main() {
 	router.Use(middleware.AuthMiddleware(settingsService, sessionService))
 
 	// Routes
-	setupRoutes(router, subscriptionHandler, settingsHandler, settingsService, categoryHandler, authHandler)
+	setupRoutes(router, subscriptionHandler, settingsHandler, settingsService, categoryHandler, authHandler, i18nCatalog)
 
 	// Seed sample data if database is empty
 	// Commented out - no sample data by default
@@ -198,11 +212,14 @@ func main() {
 }
 
 // loadTemplates loads HTML templates with better error handling for arm64 compatibility
-func loadTemplates() *template.Template {
+func loadTemplates(catalog *i18n.Catalog) *template.Template {
 	tmpl := template.New("")
 
 	// Add template functions
 	tmpl.Funcs(template.FuncMap{
+		"t": func(lang, key string) string {
+			return catalog.T(lang, key)
+		},
 		"add": func(a, b float64) float64 { return a + b },
 		"sub": func(a, b float64) float64 { return a - b },
 		"mul": func(a, b float64) float64 { return a * b },
@@ -317,7 +334,7 @@ func loadTemplates() *template.Template {
 	return tmpl
 }
 
-func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, settingsHandler *handlers.SettingsHandler, settingsService *service.SettingsService, categoryHandler *handlers.CategoryHandler, authHandler *handlers.AuthHandler) {
+func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, settingsHandler *handlers.SettingsHandler, settingsService *service.SettingsService, categoryHandler *handlers.CategoryHandler, authHandler *handlers.AuthHandler, i18nCatalog *i18n.Catalog) {
 	// Auth routes (public)
 	router.GET("/login", authHandler.ShowLoginPage)
 	router.GET("/forgot-password", authHandler.ShowForgotPasswordPage)
@@ -349,6 +366,7 @@ func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, sett
 		api.GET("/subscriptions/:id", handler.GetSubscription)
 		api.PUT("/subscriptions/:id", handler.UpdateSubscription)
 		api.DELETE("/subscriptions/:id", handler.DeleteSubscription)
+		api.POST("/subscriptions/:id/duplicate", handler.DuplicateSubscription)
 		api.GET("/stats", handler.GetStats)
 
 		// Export and data management routes
@@ -406,6 +424,11 @@ func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, sett
 		api.GET("/settings/theme", settingsHandler.GetTheme)
 		api.POST("/settings/theme", settingsHandler.SetTheme)
 
+		// Language setting
+		api.POST("/settings/language", func(c *gin.Context) {
+			settingsHandler.SetLanguage(c, i18nCatalog.HasLanguage)
+		})
+
 		// iCal subscription settings
 		api.POST("/settings/ical/toggle", settingsHandler.ToggleICalSubscription)
 		api.GET("/settings/ical/url", settingsHandler.GetICalSubscriptionURL)
@@ -425,6 +448,7 @@ func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, sett
 		v1.GET("/subscriptions/:id", handler.GetSubscription)
 		v1.PUT("/subscriptions/:id", handler.UpdateSubscription)
 		v1.DELETE("/subscriptions/:id", handler.DeleteSubscription)
+		v1.POST("/subscriptions/:id/duplicate", handler.DuplicateSubscription)
 
 		// Stats and export endpoints
 		v1.GET("/stats", handler.GetStats)
@@ -470,14 +494,16 @@ func checkAndSendRenewalReminders(subscriptionService *service.SubscriptionServi
 		return // Silently skip if disabled or error
 	}
 
-	// Get reminder days setting
-	reminderDays := settingsService.GetIntSettingWithDefault("reminder_days", 7)
-	if reminderDays <= 0 {
-		return // No reminders if days is 0 or negative
+	// Resolve reminder windows: multi-value CSV takes precedence; fall back to single-int setting.
+	windowsCSV := settingsService.GetStringSettingWithDefault("reminder_days_list", "")
+	fallback := settingsService.GetIntSettingWithDefault("reminder_days", 7)
+	windows := service.ParseReminderWindows(windowsCSV, fallback)
+	if len(windows) == 0 {
+		return // No reminders configured
 	}
 
 	// Get subscriptions needing reminders
-	subscriptions, err := subscriptionService.GetSubscriptionsNeedingReminders(reminderDays)
+	subscriptions, err := subscriptionService.GetSubscriptionsNeedingReminders(windows)
 	if err != nil {
 		log.Printf("Error getting subscriptions for renewal reminders: %v", err)
 		return
@@ -503,13 +529,16 @@ func checkAndSendRenewalReminders(subscriptionService *service.SubscriptionServi
 			log.Printf("Error sending renewal reminder for subscription %s (ID: %d): email=%v, pushover=%v, webhook=%v", sub.Name, sub.ID, emailErr, pushoverErr, webhookErr)
 			failedCount++
 		} else {
-			// Mark reminder as sent for this renewal date
+			// Mark reminder as sent for this renewal date and remember the window we just fired.
+			// Renewal-date changes are handled by the sameRenewal check in
+			// GetSubscriptionsNeedingReminders, so no explicit reset is needed here.
 			now := time.Now()
 			sub.LastReminderSent = &now
 			if sub.RenewalDate != nil {
 				renewalDateCopy := *sub.RenewalDate
 				sub.LastReminderRenewalDate = &renewalDateCopy
 			}
+			sub.LastReminderWindow = daysUntil
 
 			// Update the subscription in the database
 			_, updateErr := subscriptionService.Update(sub.ID, sub)
@@ -576,14 +605,16 @@ func checkAndSendCancellationReminders(subscriptionService *service.Subscription
 		return // Silently skip if disabled or error
 	}
 
-	// Get reminder days setting
-	reminderDays := settingsService.GetIntSettingWithDefault("cancellation_reminder_days", 7)
-	if reminderDays <= 0 {
-		return // No reminders if days is 0 or negative
+	// Resolve cancellation reminder windows: multi-value CSV takes precedence; fall back to single-int setting.
+	windowsCSV := settingsService.GetStringSettingWithDefault("cancellation_reminder_days_list", "")
+	fallback := settingsService.GetIntSettingWithDefault("cancellation_reminder_days", 7)
+	windows := service.ParseReminderWindows(windowsCSV, fallback)
+	if len(windows) == 0 {
+		return // No reminders configured
 	}
 
 	// Get subscriptions needing cancellation reminders
-	subscriptions, err := subscriptionService.GetSubscriptionsNeedingCancellationReminders(reminderDays)
+	subscriptions, err := subscriptionService.GetSubscriptionsNeedingCancellationReminders(windows)
 	if err != nil {
 		log.Printf("Error getting subscriptions for cancellation reminders: %v", err)
 		return
@@ -609,13 +640,16 @@ func checkAndSendCancellationReminders(subscriptionService *service.Subscription
 			log.Printf("Error sending cancellation reminder for subscription %s (ID: %d): email=%v, pushover=%v, webhook=%v", sub.Name, sub.ID, emailErr, pushoverErr, webhookErr)
 			failedCount++
 		} else {
-			// Mark reminder as sent for this cancellation date
+			// Mark reminder as sent for this cancellation date and remember the window we just fired.
+			// Cancellation-date changes are handled by the sameDate check in
+			// GetSubscriptionsNeedingCancellationReminders, so no explicit reset is needed here.
 			now := time.Now()
 			sub.LastCancellationReminderSent = &now
 			if sub.CancellationDate != nil {
 				cancellationDateCopy := *sub.CancellationDate
 				sub.LastCancellationReminderDate = &cancellationDateCopy
 			}
+			sub.LastCancellationReminderWindow = daysUntil
 
 			// Update the subscription in the database
 			_, updateErr := subscriptionService.Update(sub.ID, sub)

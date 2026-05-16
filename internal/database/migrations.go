@@ -10,7 +10,7 @@ import (
 // RunMigrations executes all database migrations
 func RunMigrations(db *gorm.DB) error {
 	// Auto-migrate non-problematic models first
-	err := db.AutoMigrate(&models.Category{}, &models.Settings{}, &models.APIKey{}, &models.ExchangeRate{})
+	err := db.AutoMigrate(&models.Category{}, &models.Settings{}, &models.APIKey{}, &models.ExchangeRate{}, &models.Tag{})
 	if err != nil {
 		return err
 	}
@@ -25,6 +25,9 @@ func RunMigrations(db *gorm.DB) error {
 		migrateCancellationReminderTracking,
 		migrateScheduleInterval,
 		migrateReminderEnabled,
+		migrateSubscriptionLabel,
+		migrateShareCount,
+		migrateReminderWindows,
 	}
 
 	for _, migration := range migrations {
@@ -36,6 +39,20 @@ func RunMigrations(db *gorm.DB) error {
 	// Try to auto-migrate subscriptions after the category migration
 	// This might fail on existing databases but that's okay
 	db.AutoMigrate(&models.Subscription{})
+
+	// Ensure the subscription_tags join table exists (separate from Subscription/Tag tables
+	// so the many2many relation works regardless of column-order quirks on legacy schemas).
+	if err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS subscription_tags (
+			subscription_id INTEGER NOT NULL,
+			tag_id INTEGER NOT NULL,
+			PRIMARY KEY (subscription_id, tag_id),
+			FOREIGN KEY (subscription_id) REFERENCES subscriptions(id) ON DELETE CASCADE,
+			FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+		)
+	`).Error; err != nil {
+		log.Printf("Warning: Could not create subscription_tags table: %v", err)
+	}
 
 	return nil
 }
@@ -259,6 +276,74 @@ func migrateScheduleInterval(db *gorm.DB) error {
 	}
 
 	log.Println("Migration completed: Schedule interval field added")
+	return nil
+}
+
+// migrateSubscriptionLabel adds a free-form sub-label field to distinguish multiple
+// subscriptions of the same service (e.g. domain name at a registrar, family member's phone line).
+func migrateSubscriptionLabel(db *gorm.DB) error {
+	var count int64
+	db.Raw("SELECT COUNT(*) FROM pragma_table_info('subscriptions') WHERE name = 'label'").Count(&count)
+
+	if count > 0 {
+		return nil
+	}
+
+	log.Println("Running migration: Adding subscription label field...")
+
+	if err := db.Exec("ALTER TABLE subscriptions ADD COLUMN label TEXT DEFAULT ''").Error; err != nil {
+		log.Printf("Note: Could not add label column: %v", err)
+	}
+
+	log.Println("Migration completed: Subscription label field added")
+	return nil
+}
+
+// migrateShareCount adds the share_count field for split-cost subscriptions.
+func migrateShareCount(db *gorm.DB) error {
+	var count int64
+	db.Raw("SELECT COUNT(*) FROM pragma_table_info('subscriptions') WHERE name = 'share_count'").Count(&count)
+
+	if count > 0 {
+		return nil
+	}
+
+	log.Println("Running migration: Adding share_count field...")
+
+	if err := db.Exec("ALTER TABLE subscriptions ADD COLUMN share_count INTEGER DEFAULT 1").Error; err != nil {
+		log.Printf("Note: Could not add share_count column: %v", err)
+	}
+
+	if err := db.Exec("UPDATE subscriptions SET share_count = 1 WHERE share_count IS NULL OR share_count < 1").Error; err != nil {
+		log.Printf("Warning: Could not backfill share_count defaults: %v", err)
+	}
+
+	log.Println("Migration completed: share_count field added")
+	return nil
+}
+
+// migrateReminderWindows adds last_reminder_window / last_cancellation_reminder_window fields
+// that track which configured notification window has already fired for the current renewal/cancellation date.
+// Default -1 means "no window fired yet"; existing rows start fresh.
+func migrateReminderWindows(db *gorm.DB) error {
+	var count int64
+	db.Raw("SELECT COUNT(*) FROM pragma_table_info('subscriptions') WHERE name = 'last_reminder_window'").Count(&count)
+	if count == 0 {
+		log.Println("Running migration: Adding last_reminder_window field...")
+		if err := db.Exec("ALTER TABLE subscriptions ADD COLUMN last_reminder_window INTEGER DEFAULT -1").Error; err != nil {
+			log.Printf("Note: Could not add last_reminder_window column: %v", err)
+		}
+	}
+
+	var count2 int64
+	db.Raw("SELECT COUNT(*) FROM pragma_table_info('subscriptions') WHERE name = 'last_cancellation_reminder_window'").Count(&count2)
+	if count2 == 0 {
+		log.Println("Running migration: Adding last_cancellation_reminder_window field...")
+		if err := db.Exec("ALTER TABLE subscriptions ADD COLUMN last_cancellation_reminder_window INTEGER DEFAULT -1").Error; err != nil {
+			log.Printf("Note: Could not add last_cancellation_reminder_window column: %v", err)
+		}
+	}
+
 	return nil
 }
 
