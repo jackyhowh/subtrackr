@@ -529,15 +529,13 @@ func checkAndSendRenewalReminders(subscriptionService *service.SubscriptionServi
 			log.Printf("Error sending renewal reminder for subscription %s (ID: %d): email=%v, pushover=%v, webhook=%v", sub.Name, sub.ID, emailErr, pushoverErr, webhookErr)
 			failedCount++
 		} else {
-			// Mark reminder as sent for this renewal date and remember the window we just fired
+			// Mark reminder as sent for this renewal date and remember the window we just fired.
+			// Renewal-date changes are handled by the sameRenewal check in
+			// GetSubscriptionsNeedingReminders, so no explicit reset is needed here.
 			now := time.Now()
 			sub.LastReminderSent = &now
 			if sub.RenewalDate != nil {
 				renewalDateCopy := *sub.RenewalDate
-				// Reset the window tracker if the renewal date has changed since the last reminder
-				if sub.LastReminderRenewalDate == nil || !sub.LastReminderRenewalDate.Equal(*sub.RenewalDate) {
-					sub.LastReminderWindow = -1
-				}
 				sub.LastReminderRenewalDate = &renewalDateCopy
 			}
 			sub.LastReminderWindow = daysUntil
@@ -642,14 +640,13 @@ func checkAndSendCancellationReminders(subscriptionService *service.Subscription
 			log.Printf("Error sending cancellation reminder for subscription %s (ID: %d): email=%v, pushover=%v, webhook=%v", sub.Name, sub.ID, emailErr, pushoverErr, webhookErr)
 			failedCount++
 		} else {
-			// Mark reminder as sent for this cancellation date and remember the window we just fired
+			// Mark reminder as sent for this cancellation date and remember the window we just fired.
+			// Cancellation-date changes are handled by the sameDate check in
+			// GetSubscriptionsNeedingCancellationReminders, so no explicit reset is needed here.
 			now := time.Now()
 			sub.LastCancellationReminderSent = &now
 			if sub.CancellationDate != nil {
 				cancellationDateCopy := *sub.CancellationDate
-				if sub.LastCancellationReminderDate == nil || !sub.LastCancellationReminderDate.Equal(*sub.CancellationDate) {
-					sub.LastCancellationReminderWindow = -1
-				}
 				sub.LastCancellationReminderDate = &cancellationDateCopy
 			}
 			sub.LastCancellationReminderWindow = daysUntil

@@ -19,7 +19,8 @@ func (s *TagService) GetAll() ([]models.Tag, error) {
 }
 
 // ParseTagsInput splits a comma-separated tag string into individual tag names.
-// Returns trimmed, deduplicated, non-empty names.
+// Returns trimmed, non-empty names; case-insensitive deduplication happens
+// downstream in FindOrCreateByNames.
 func ParseTagsInput(input string) []string {
 	parts := strings.Split(input, ",")
 	out := make([]string, 0, len(parts))
