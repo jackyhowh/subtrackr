@@ -94,7 +94,7 @@ func main() {
 	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService, settingsService, currencyService, emailService, pushoverService, webhookService, logoService, categoryService, tagService, i18nCatalog)
 	settingsHandler := handlers.NewSettingsHandler(settingsService)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
-	authHandler := handlers.NewAuthHandler(settingsService, sessionService, emailService)
+	authHandler := handlers.NewAuthHandler(settingsService, sessionService, emailService, i18nCatalog)
 
 	// Setup Gin router
 	if cfg.Environment == "production" {
@@ -137,8 +137,9 @@ func main() {
 		"fmtTime": func(t time.Time, format string) string {
 			return t.Format(format)
 		},
-		"t": func(lang, key string) string {
-			return i18nCatalog.T(lang, key)
+		"t": func(lang interface{}, key string) string {
+			langStr, _ := lang.(string)
+			return i18nCatalog.T(langStr, key)
 		},
 	})
 
@@ -217,8 +218,9 @@ func loadTemplates(catalog *i18n.Catalog) *template.Template {
 
 	// Add template functions
 	tmpl.Funcs(template.FuncMap{
-		"t": func(lang, key string) string {
-			return catalog.T(lang, key)
+		"t": func(lang interface{}, key string) string {
+			langStr, _ := lang.(string)
+			return catalog.T(langStr, key)
 		},
 		"add": func(a, b float64) float64 { return a + b },
 		"sub": func(a, b float64) float64 { return a - b },

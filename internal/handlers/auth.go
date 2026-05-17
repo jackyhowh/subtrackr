@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"subtrackr/internal/i18n"
 	"subtrackr/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -15,14 +16,26 @@ type AuthHandler struct {
 	settingsService *service.SettingsService
 	sessionService  *service.SessionService
 	emailService    *service.EmailService
+	i18nCatalog     *i18n.Catalog
 }
 
-func NewAuthHandler(settingsService *service.SettingsService, sessionService *service.SessionService, emailService *service.EmailService) *AuthHandler {
+func NewAuthHandler(settingsService *service.SettingsService, sessionService *service.SessionService, emailService *service.EmailService, i18nCatalog *i18n.Catalog) *AuthHandler {
 	return &AuthHandler{
 		settingsService: settingsService,
 		sessionService:  sessionService,
 		emailService:    emailService,
+		i18nCatalog:     i18nCatalog,
 	}
+}
+
+// activeLang resolves the user-preferred language code, defaulting to "en" when unset
+// or when the requested language has no loaded translations.
+func (h *AuthHandler) activeLang() string {
+	lang := h.settingsService.GetStringSettingWithDefault("lang", "en")
+	if h.i18nCatalog != nil && !h.i18nCatalog.HasLanguage(lang) {
+		return "en"
+	}
+	return lang
 }
 
 // isValidRedirect validates that a redirect URL is safe (relative URL only)
@@ -56,6 +69,7 @@ func (h *AuthHandler) ShowLoginPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "login.html", gin.H{
 		"Redirect": redirect,
 		"Error":    c.Query("error"),
+		"Lang":     h.activeLang(),
 	})
 }
 
@@ -120,7 +134,9 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 // ShowForgotPasswordPage displays the forgot password page
 func (h *AuthHandler) ShowForgotPasswordPage(c *gin.Context) {
-	c.HTML(http.StatusOK, "forgot-password.html", gin.H{})
+	c.HTML(http.StatusOK, "forgot-password.html", gin.H{
+		"Lang": h.activeLang(),
+	})
 }
 
 // ForgotPassword handles forgot password request
@@ -176,6 +192,7 @@ func (h *AuthHandler) ShowResetPasswordPage(c *gin.Context) {
 	if token == "" {
 		c.HTML(http.StatusBadRequest, "reset-password.html", gin.H{
 			"Error": "Invalid reset token",
+			"Lang":  h.activeLang(),
 		})
 		return
 	}
@@ -184,12 +201,14 @@ func (h *AuthHandler) ShowResetPasswordPage(c *gin.Context) {
 	if err := h.settingsService.ValidateResetToken(token); err != nil {
 		c.HTML(http.StatusBadRequest, "reset-password.html", gin.H{
 			"Error": "Invalid or expired reset token",
+			"Lang":  h.activeLang(),
 		})
 		return
 	}
 
 	c.HTML(http.StatusOK, "reset-password.html", gin.H{
 		"Token": token,
+		"Lang":  h.activeLang(),
 	})
 }
 
