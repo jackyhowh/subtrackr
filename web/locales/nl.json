@@ -54,7 +54,7 @@
 	"form.name": "Naam",
 	"form.label": "Label",
 	"form.label_help": "Helpt bij het onderscheiden van meerdere abonnementen op dezelfde dienst.",
-	"form.label_placeholder": "bijv. voorbeeld.nl, abonnement van mama, werkaccount",
+	"form.label_placeholder": "bijv. example.com, abonnement van mama, werkaccount",
 	"form.tags": "Tags",
 	"form.tags_help": "Gebruik tags om abonnementen over categorieën heen te groeperen.",
 	"form.tags_subtitle": "optioneel, met komma's gescheiden",
