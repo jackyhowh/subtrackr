@@ -355,12 +355,18 @@ func (h *SubscriptionHandler) Calendar(c *gin.Context) {
 		}
 	}
 
+	lang := h.activeLang()
+	monthName := h.i18nCatalog.T(lang, fmt.Sprintf("month.%d", int(firstOfMonth.Month())))
+	if monthName == "" {
+		monthName = firstOfMonth.Format("January")
+	}
+
 	c.HTML(http.StatusOK, "calendar.html", gin.H{
 		"Title":                   "Calendar",
 		"CurrentPage":             "calendar",
 		"Year":                    year,
 		"Month":                   month,
-		"MonthName":               firstOfMonth.Format("January 2006"),
+		"MonthName":               fmt.Sprintf("%s %d", monthName, firstOfMonth.Year()),
 		"EventsByDate":            template.JS(string(eventsJSON)),
 		"FirstOfMonth":            firstOfMonth,
 		"PrevMonth":               prevMonth,
@@ -369,7 +375,7 @@ func (h *SubscriptionHandler) Calendar(c *gin.Context) {
 		"DarkMode":                h.settingsService.IsDarkModeEnabled(),
 		"ICalSubscriptionEnabled": icalSubscriptionEnabled,
 		"ICalSubscriptionURL":     icalSubscriptionURL,
-		"Lang":                    h.activeLang(),
+		"Lang":                    lang,
 	})
 }
 
