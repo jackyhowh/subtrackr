@@ -356,8 +356,9 @@ func (h *SubscriptionHandler) Calendar(c *gin.Context) {
 	}
 
 	lang := h.activeLang()
-	monthName := h.i18nCatalog.T(lang, fmt.Sprintf("month.%d", int(firstOfMonth.Month())))
-	if monthName == "" {
+	monthKey := fmt.Sprintf("month.%d", int(firstOfMonth.Month()))
+	monthName := h.i18nCatalog.T(lang, monthKey)
+	if monthName == monthKey {
 		monthName = firstOfMonth.Format("January")
 	}
 

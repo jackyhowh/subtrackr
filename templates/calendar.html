@@ -203,8 +203,8 @@
                                 var url = document.getElementById('cal-subscription-url').value;
                                 navigator.clipboard.writeText(url).then(function() {
                                     var span = document.getElementById('subscribe-btn-text');
-                                    span.textContent = {{t .Lang "common.copied" | printf "%q"}};
-                                    setTimeout(function() { span.textContent = {{t .Lang "calendar.subscribe_short" | printf "%q"}}; }, 2000);
+                                    span.textContent = {{t .Lang "common.copied"}};
+                                    setTimeout(function() { span.textContent = {{t .Lang "calendar.subscribe_short"}}; }, 2000);
                                 });
                             }
                         </script>

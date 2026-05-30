@@ -143,7 +143,6 @@ func main() {
 		},
 		"statusLabel":   statusLabelFunc(i18nCatalog),
 		"scheduleLabel": scheduleLabelFunc(i18nCatalog),
-		"monthLabel":    monthLabelFunc(i18nCatalog),
 	})
 
 	// Load HTML templates with error handling
@@ -260,19 +259,6 @@ func scheduleLabelFunc(catalog *i18n.Catalog) func(interface{}, string, int) str
 	}
 }
 
-// monthLabelFunc returns a template func that translates a 1-based month
-// number (1=January … 12=December) to its localized name.
-func monthLabelFunc(catalog *i18n.Catalog) func(interface{}, int) string {
-	return func(lang interface{}, month int) string {
-		if month < 1 || month > 12 {
-			return ""
-		}
-		langStr, _ := lang.(string)
-		key := fmt.Sprintf("month.%d", month)
-		return catalog.T(langStr, key)
-	}
-}
-
 // loadTemplates loads HTML templates with better error handling for arm64 compatibility
 func loadTemplates(catalog *i18n.Catalog) *template.Template {
 	tmpl := template.New("")
@@ -285,7 +271,6 @@ func loadTemplates(catalog *i18n.Catalog) *template.Template {
 		},
 		"statusLabel":   statusLabelFunc(catalog),
 		"scheduleLabel": scheduleLabelFunc(catalog),
-		"monthLabel":    monthLabelFunc(catalog),
 		"add": func(a, b float64) float64 { return a + b },
 		"sub": func(a, b float64) float64 { return a - b },
 		"mul": func(a, b float64) float64 { return a * b },
