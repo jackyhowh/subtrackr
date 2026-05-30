@@ -158,7 +158,7 @@
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                 </svg>
-                                Add Subscription
+                                {{t .Lang "common.add_subscription"}}
                             </button>
                         </div>
                     </nav>
@@ -174,14 +174,14 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 transition-colors duration-200">
         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{t .Lang "settings.title"}}</h2>
-            <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Manage your SubTrackr preferences and data</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{t .Lang "settings.subtitle"}}</p>
         </div>
         
         <div class="p-6 space-y-8">
             <!-- Appearance -->
             <div>
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.appearance"}}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Personalize your SubTrackr experience with beautiful themes</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.appearance_description"}}</p>
 
                 <!-- Language Selector -->
                 <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg mb-4">
@@ -289,13 +289,13 @@
             <!-- Export Data -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.export_data"}}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Download your subscription data in various formats</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.export_data_description"}}</p>
                 <div class="flex space-x-3">
                     <a href="/api/export/csv" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 dark:bg-primary dark:hover:bg-primary/80 inline-block transition-colors duration-150">
-                        Export as CSV
+                        {{t .Lang "settings.export_csv"}}
                     </a>
                     <a href="/api/export/json" class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 inline-block transition-colors duration-150">
-                        Export as JSON
+                        {{t .Lang "settings.export_json"}}
                     </a>
                 </div>
             </div>
@@ -303,11 +303,11 @@
             <!-- Base URL -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.base_url"}}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Set the external URL for your SubTrackr instance. Used for iCal subscription links and password reset emails. Leave blank to auto-detect from request headers.</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.base_url_description"}}</p>
                 <form hx-post="/api/settings/base-url" hx-swap="none" class="flex items-center space-x-2">
                     <input type="url" name="base_url" id="base-url-input"
                         value="{{.BaseURL}}"
-                        placeholder="https://subtrackr.example.com"
+                        placeholder="{{t .Lang "settings.base_url_placeholder"}}"
                         class="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
                     <button type="submit"
                         class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors duration-150">
@@ -331,14 +331,14 @@
             <!-- Calendar Subscription -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.calendar_subscription"}}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Enable a subscribable iCal URL that calendar apps can poll for live updates</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.calendar_subscription_description"}}</p>
 
                 <div class="space-y-4">
                     <!-- Toggle -->
                     <div class="flex items-center justify-between">
                         <div>
-                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">iCal Subscription</h4>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Allow calendar apps to subscribe to your renewal dates</p>
+                            <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.calendar_subscription_label"}}</h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{t .Lang "settings.calendar_subscription_label_help"}}</p>
                         </div>
                         <button id="ical-toggle-btn"
                             hx-post="/api/settings/ical/toggle"
@@ -369,7 +369,7 @@
                                 Regenerate
                             </button>
                         </div>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Add this URL as a "Subscribe to Calendar" in your calendar app (Google Calendar, Apple Calendar, Outlook, etc.)</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{t .Lang "settings.calendar_subscription_url_help"}}</p>
                     </div>
                 </div>
 
@@ -430,10 +430,10 @@
                     <div class="flex items-center justify-between p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                         <div>
                             <h4 class="text-sm font-medium text-yellow-900 dark:text-yellow-200">{{t .Lang "settings.backup_data"}}</h4>
-                            <p class="text-sm text-yellow-800 dark:text-yellow-300">Create a backup of all your subscription data</p>
+                            <p class="text-sm text-yellow-800 dark:text-yellow-300">{{t .Lang "settings.create_backup_description"}}</p>
                         </div>
                         <a href="/api/backup" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-700 inline-block">
-                            Create Backup
+                            {{t .Lang "settings.create_backup"}}
                         </a>
                     </div>
                     
@@ -498,7 +498,7 @@
                             </div>
                             <div>
                                 <label for="smtp_username" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{t .Lang "settings.smtp_username"}}</label>
-                                <input type="text" id="smtp_username" name="smtp_username" placeholder="username or email" value="{{if .SMTPConfig}}{{.SMTPConfig.Username}}{{end}}"
+                                <input type="text" id="smtp_username" name="smtp_username" placeholder="{{t .Lang "settings.smtp_username_placeholder"}}" value="{{if .SMTPConfig}}{{.SMTPConfig.Username}}{{end}}"
                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-colors duration-150">
                             </div>
                             <div>
@@ -518,7 +518,7 @@
                             </div>
                             <div class="md:col-span-2">
                                 <label for="smtp_to" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{t .Lang "settings.smtp_to_email"}}</label>
-                                <input type="email" id="smtp_to" name="smtp_to" placeholder="your-email@example.com" value="{{if .SMTPConfig}}{{.SMTPConfig.To}}{{end}}"
+                                <input type="email" id="smtp_to" name="smtp_to" placeholder="{{t .Lang "settings.smtp_to_email_placeholder"}}" value="{{if .SMTPConfig}}{{.SMTPConfig.To}}{{end}}"
                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-colors duration-150">
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{t .Lang "settings.smtp_to_email_help"}}</p>
                             </div>
@@ -582,7 +582,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.high_cost_threshold"}}</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-300">Monthly cost threshold for high cost alerts (in {{.CurrencySymbol}})</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">{{printf (t .Lang "settings.high_cost_threshold_with_symbol") .CurrencySymbol}}</p>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="text-sm text-gray-600 dark:text-gray-400">{{.CurrencySymbol}}</span>
@@ -602,7 +602,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.days_before_renewal"}}</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-300">Single days-before fallback. Use the multi-window field below for multiple reminders.</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">{{t .Lang "settings.days_before_renewal_help"}}</p>
                         </div>
                         <input type="number"
                                name="reminder_days"
@@ -618,7 +618,7 @@
                     <div class="flex items-start justify-between">
                         <div class="flex-1 pr-4">
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.reminder_windows"}}</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-300">Comma-separated days before renewal (e.g. <code>7,3,0</code>). One reminder is sent as each threshold is crossed. Leave empty to use the single value above.</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">{{t .Lang "settings.reminder_windows_help"}}</p>
                         </div>
                         <input type="text"
                                name="reminder_days_list"
@@ -647,7 +647,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.days_before_cancellation"}}</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-300">Single days-before fallback. Use the multi-window field below for multiple reminders.</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">{{t .Lang "settings.days_before_cancellation_help"}}</p>
                         </div>
                         <input type="number"
                                name="cancellation_reminder_days"
@@ -663,7 +663,7 @@
                     <div class="flex items-start justify-between">
                         <div class="flex-1 pr-4">
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.cancellation_reminder_windows"}}</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-300">Comma-separated days before cancellation. Leave empty to use the single value above.</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">{{t .Lang "settings.cancellation_reminder_windows_help"}}</p>
                         </div>
                         <input type="text"
                                name="cancellation_reminder_days_list"
@@ -691,13 +691,13 @@
                                 <label for="pushover_user_key" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{t .Lang "settings.pushover_user_key"}}</label>
                                 <input type="text" id="pushover_user_key" name="pushover_user_key" placeholder="{{t .Lang "settings.pushover_user_key_placeholder"}}" value="{{if .PushoverConfig}}{{.PushoverConfig.UserKey}}{{end}}"
                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-colors duration-150">
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Get your User Key from <a href="https://pushover.net/" target="_blank" class="text-primary hover:underline">pushover.net</a></p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{t .Lang "settings.pushover_user_key_help"}} <a href="https://pushover.net/" target="_blank" class="text-primary hover:underline">pushover.net</a></p>
                             </div>
                             <div>
                                 <label for="pushover_app_token" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{t .Lang "settings.pushover_app_token"}}</label>
                                 <input type="text" id="pushover_app_token" name="pushover_app_token" placeholder="{{t .Lang "settings.pushover_app_token_placeholder"}}" value="{{if .PushoverConfig}}{{.PushoverConfig.AppToken}}{{end}}"
                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-colors duration-150">
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Create an application at <a href="https://pushover.net/apps/build" target="_blank" class="text-primary hover:underline">pushover.net/apps</a></p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{t .Lang "settings.pushover_app_token_help"}} <a href="https://pushover.net/apps/build" target="_blank" class="text-primary hover:underline">pushover.net/apps</a></p>
                             </div>
                         </div>
                         <div class="mb-4">
@@ -730,7 +730,7 @@
             <!-- Webhook Notifications -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.webhook_notifications"}}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Send notifications to any webhook endpoint (Slack, Discord, n8n, Home Assistant, etc.)</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.webhook_description"}}</p>
 
                 <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 transition-colors duration-200">
                     <form id="webhook-form" hx-post="/api/settings/webhook" hx-trigger="submit" hx-target="#webhook-message" hx-swap="innerHTML">
@@ -739,13 +739,13 @@
                                 <label for="webhook_url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{t .Lang "settings.webhook_url"}}</label>
                                 <input type="url" id="webhook_url" name="webhook_url"
                                        value="{{if .WebhookConfig}}{{.WebhookConfig.URL}}{{end}}"
-                                       placeholder="https://example.com/webhook"
+                                       placeholder="{{t .Lang "settings.webhook_url_placeholder"}}"
                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-colors duration-150">
                             </div>
                             <div>
                                 <label for="webhook_headers" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{t .Lang "settings.webhook_headers"}} <span class="text-gray-400 font-normal">({{t .Lang "settings.webhook_headers_subtitle"}})</span></label>
                                 <textarea id="webhook_headers" name="webhook_headers" rows="3"
-                                          placeholder="Authorization: Bearer your-token-here&#10;X-Custom-Header: value"
+                                          placeholder="{{t .Lang "settings.webhook_headers_placeholder"}}"
                                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-primary focus:border-primary font-mono transition-colors duration-150">{{if .WebhookConfig}}{{range $key, $value := .WebhookConfig.Headers}}{{$key}}: {{$value}}
 {{end}}{{end}}</textarea>
                             </div>
@@ -775,13 +775,13 @@
             <!-- Security Settings -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.security"}}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Protect your SubTrackr instance with login authentication</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.security_description"}}</p>
 
                 <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 transition-colors duration-200">
                     <div class="flex items-center justify-between mb-4">
                         <div>
                             <h4 class="text-sm font-medium text-gray-900 dark:text-white">{{t .Lang "settings.require_login"}}</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-300">Enable authentication to protect your data</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">{{t .Lang "settings.require_login_help"}}</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox"
@@ -861,7 +861,7 @@
             <!-- Currency Settings -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.currency"}}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Choose your preferred currency for displaying subscription costs</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.currency_description"}}</p>
                 
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {{range .Currencies}}
@@ -885,7 +885,7 @@
             <!-- Date Format Settings -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.date_format"}}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Choose how dates are displayed throughout the application</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.date_format_description"}}</p>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <label class="flex items-center cursor-pointer">
@@ -939,7 +939,7 @@
                         <div class="flex items-end space-x-3">
                             <div class="flex-1">
                                 <label for="category_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{{t .Lang "settings.category_name"}}</label>
-                                <input type="text" id="category_name" name="name" required placeholder="e.g., Streaming" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-colors duration-150">
+                                <input type="text" id="category_name" name="name" required placeholder="{{t .Lang "settings.category_placeholder"}}" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-colors duration-150">
                             </div>
                             <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90">{{t .Lang "settings.add_category"}}</button>
                         </div>
@@ -950,7 +950,7 @@
             <!-- API Keys -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.api_keys"}}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Create API keys to access SubTrackr from external applications</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.api_keys_description"}}</p>
                 
                 <!-- API Key List -->
                 <div id="api-keys-list" class="space-y-2 mb-4">
@@ -972,11 +972,11 @@
                                        id="api_key_name" 
                                        name="name" 
                                        required
-                                       placeholder="e.g., Home Assistant Integration"
+                                       placeholder="{{t .Lang "settings.api_key_name_placeholder"}}"
                                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-colors duration-150">
                             </div>
                             <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90">
-                                Generate API Key
+                                {{t .Lang "settings.api_key_generate"}}
                             </button>
                         </div>
                     </form>

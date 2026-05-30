@@ -10,6 +10,7 @@ import (
 	"net/smtp"
 	"strconv"
 	"strings"
+	"subtrackr/internal/i18n"
 	"subtrackr/internal/models"
 	"subtrackr/internal/service"
 	"time"
@@ -22,11 +23,22 @@ func trimSpace(s string) string    { return strings.TrimSpace(s) }
 func splitN(s, sep string, n int) []string { return strings.SplitN(s, sep, n) }
 
 type SettingsHandler struct {
-	service *service.SettingsService
+	service     *service.SettingsService
+	i18nCatalog *i18n.Catalog
 }
 
-func NewSettingsHandler(service *service.SettingsService) *SettingsHandler {
-	return &SettingsHandler{service: service}
+func NewSettingsHandler(service *service.SettingsService, i18nCatalog *i18n.Catalog) *SettingsHandler {
+	return &SettingsHandler{service: service, i18nCatalog: i18nCatalog}
+}
+
+// activeLang resolves the user-preferred language code, defaulting to "en"
+// when unset or when the requested language has no loaded translations.
+func (h *SettingsHandler) activeLang() string {
+	lang := h.service.GetStringSettingWithDefault("lang", "en")
+	if h.i18nCatalog != nil && !h.i18nCatalog.HasLanguage(lang) {
+		return "en"
+	}
+	return lang
 }
 
 // SaveSMTPSettings saves SMTP configuration
@@ -315,6 +327,7 @@ func (h *SettingsHandler) ListAPIKeys(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "api-keys-list.html", gin.H{
 			"Error": err.Error(),
+			"Lang":  h.activeLang(),
 		})
 		return
 	}
@@ -329,6 +342,7 @@ func (h *SettingsHandler) ListAPIKeys(c *gin.Context) {
 	c.HTML(http.StatusOK, "api-keys-list.html", gin.H{
 		"Keys":         keys,
 		"GoDateFormat": h.service.GetGoDateFormat(),
+		"Lang":         h.activeLang(),
 	})
 }
 
@@ -338,6 +352,7 @@ func (h *SettingsHandler) CreateAPIKey(c *gin.Context) {
 	if name == "" {
 		c.HTML(http.StatusBadRequest, "api-keys-list.html", gin.H{
 			"Error": "API key name is required",
+			"Lang":  h.activeLang(),
 		})
 		return
 	}
@@ -347,6 +362,7 @@ func (h *SettingsHandler) CreateAPIKey(c *gin.Context) {
 	if _, err := rand.Read(keyBytes); err != nil {
 		c.HTML(http.StatusInternalServerError, "api-keys-list.html", gin.H{
 			"Error": "Failed to generate API key",
+			"Lang":  h.activeLang(),
 		})
 		return
 	}
@@ -358,6 +374,7 @@ func (h *SettingsHandler) CreateAPIKey(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "api-keys-list.html", gin.H{
 			"Error": err.Error(),
+			"Lang":  h.activeLang(),
 		})
 		return
 	}
@@ -367,6 +384,7 @@ func (h *SettingsHandler) CreateAPIKey(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "api-keys-list.html", gin.H{
 			"Error": err.Error(),
+			"Lang":  h.activeLang(),
 		})
 		return
 	}
@@ -384,6 +402,7 @@ func (h *SettingsHandler) CreateAPIKey(c *gin.Context) {
 	c.HTML(http.StatusOK, "api-keys-list.html", gin.H{
 		"Keys":         keys,
 		"GoDateFormat": h.service.GetGoDateFormat(),
+		"Lang":         h.activeLang(),
 	})
 }
 
@@ -394,6 +413,7 @@ func (h *SettingsHandler) DeleteAPIKey(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "api-keys-list.html", gin.H{
 			"Error": "Invalid API key ID",
+			"Lang":  h.activeLang(),
 		})
 		return
 	}
@@ -402,6 +422,7 @@ func (h *SettingsHandler) DeleteAPIKey(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "api-keys-list.html", gin.H{
 			"Error": err.Error(),
+			"Lang":  h.activeLang(),
 		})
 		return
 	}

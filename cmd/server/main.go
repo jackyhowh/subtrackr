@@ -92,7 +92,7 @@ func main() {
 
 	// Initialize handlers
 	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService, settingsService, currencyService, emailService, pushoverService, webhookService, logoService, categoryService, tagService, i18nCatalog)
-	settingsHandler := handlers.NewSettingsHandler(settingsService)
+	settingsHandler := handlers.NewSettingsHandler(settingsService, i18nCatalog)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 	authHandler := handlers.NewAuthHandler(settingsService, sessionService, emailService, i18nCatalog)
 
@@ -141,6 +141,8 @@ func main() {
 			langStr, _ := lang.(string)
 			return i18nCatalog.T(langStr, key)
 		},
+		"statusLabel":   statusLabelFunc(i18nCatalog),
+		"scheduleLabel": scheduleLabelFunc(i18nCatalog),
 	})
 
 	// Load HTML templates with error handling
@@ -212,6 +214,51 @@ func main() {
 	log.Fatal(router.Run(":" + port))
 }
 
+// statusLabelFunc returns a template func that translates a subscription status
+// string (e.g. "Active") to its localized label, falling back to the raw value.
+func statusLabelFunc(catalog *i18n.Catalog) func(interface{}, string) string {
+	return func(lang interface{}, status string) string {
+		if status == "" {
+			return ""
+		}
+		langStr, _ := lang.(string)
+		key := "status." + strings.ToLower(status)
+		if v := catalog.T(langStr, key); v != key {
+			return v
+		}
+		return status
+	}
+}
+
+// scheduleLabelFunc returns a template func that renders a localized schedule
+// label. interval==1 → "Monthly"; interval>1 → "Every N Months".
+func scheduleLabelFunc(catalog *i18n.Catalog) func(interface{}, string, int) string {
+	pluralKey := map[string]string{
+		"Daily":     "schedule.every_n_days",
+		"Weekly":    "schedule.every_n_weeks",
+		"Monthly":   "schedule.every_n_months",
+		"Quarterly": "schedule.every_n_quarters",
+		"Annual":    "schedule.every_n_years",
+	}
+	return func(lang interface{}, schedule string, interval int) string {
+		if schedule == "" {
+			return ""
+		}
+		langStr, _ := lang.(string)
+		if interval <= 1 {
+			key := "schedule." + strings.ToLower(schedule)
+			if v := catalog.T(langStr, key); v != key {
+				return v
+			}
+			return schedule
+		}
+		if key, ok := pluralKey[schedule]; ok {
+			return fmt.Sprintf(catalog.T(langStr, key), interval)
+		}
+		return schedule
+	}
+}
+
 // loadTemplates loads HTML templates with better error handling for arm64 compatibility
 func loadTemplates(catalog *i18n.Catalog) *template.Template {
 	tmpl := template.New("")
@@ -222,6 +269,8 @@ func loadTemplates(catalog *i18n.Catalog) *template.Template {
 			langStr, _ := lang.(string)
 			return catalog.T(langStr, key)
 		},
+		"statusLabel":   statusLabelFunc(catalog),
+		"scheduleLabel": scheduleLabelFunc(catalog),
 		"add": func(a, b float64) float64 { return a + b },
 		"sub": func(a, b float64) float64 { return a - b },
 		"mul": func(a, b float64) float64 { return a * b },

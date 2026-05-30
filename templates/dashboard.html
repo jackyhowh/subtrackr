@@ -157,7 +157,7 @@
                                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                 </svg>
-                                Add Subscription
+                                {{t .Lang "common.add_subscription"}}
                             </button>
                         </div>
                     </nav>
@@ -256,8 +256,8 @@
         </div>
         {{else}}
         <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-            <p>No category spending data found.</p>
-            <p class="text-xs mt-2">Add some active subscriptions to see category breakdown.</p>
+            <p>{{t .Lang "dashboard.no_category_data"}}</p>
+            <p class="text-xs mt-2">{{t .Lang "dashboard.no_category_data_help"}}</p>
         </div>
         {{end}}
     </div>
@@ -282,7 +282,7 @@
                 {{end}}
                 <div>
                     <h3 class="text-sm font-medium text-gray-900 dark:text-white">{{.Name}}</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{.Category.Name}} • {{.Status}}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{.Category.Name}} • {{statusLabel $.Lang .Status}}</p>
                 </div>
             </div>
             <div class="text-right">
@@ -299,7 +299,7 @@
                 {{else}}
                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{.DisplayCurrencySymbol}}{{printf "%.2f" .Cost}}</p>
                 {{end}}
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{.DisplaySchedule}}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{scheduleLabel $.Lang .Schedule .ScheduleInterval}}</p>
             </div>
         </div>
         {{end}}
