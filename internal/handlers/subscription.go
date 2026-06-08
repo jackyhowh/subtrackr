@@ -635,12 +635,14 @@ func (h *SubscriptionHandler) CreateSubscription(c *gin.Context) {
 	subscription.Notes = c.PostForm("notes")
 	subscription.Usage = c.PostForm("usage")
 
-	// Default reminders to enabled unless explicitly set to false
-	reminderVal := c.PostForm("reminder_enabled")
-	if reminderVal == "" {
+	// Default reminders to enabled unless explicitly set to false.
+	// The form submits a hidden "false" before the checkbox's "true", so use
+	// the last value (Gin's PostForm returns the first, which is always "false").
+	reminderVals := c.PostFormArray("reminder_enabled")
+	if len(reminderVals) == 0 {
 		subscription.ReminderEnabled = true
 	} else {
-		subscription.ReminderEnabled = reminderVal == "true"
+		subscription.ReminderEnabled = reminderVals[len(reminderVals)-1] == "true"
 	}
 
 	// Parse cost
@@ -840,8 +842,10 @@ func (h *SubscriptionHandler) UpdateSubscription(c *gin.Context) {
 	if val, ok := c.GetPostForm("usage"); ok {
 		existing.Usage = val
 	}
-	if val, ok := c.GetPostForm("reminder_enabled"); ok {
-		existing.ReminderEnabled = val == "true"
+	// The form submits a hidden "false" before the checkbox's "true", so use
+	// the last value (Gin's GetPostForm returns the first, which is always "false").
+	if vals := c.PostFormArray("reminder_enabled"); len(vals) > 0 {
+		existing.ReminderEnabled = vals[len(vals)-1] == "true"
 	}
 	if val, ok := c.GetPostForm("cost"); ok && val != "" {
 		if cost, err := strconv.ParseFloat(val, 64); err == nil {
