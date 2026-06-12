@@ -170,7 +170,7 @@
   "settings.smtp_from_email": "From Email",
   "settings.smtp_from_name": "From Name",
   "settings.smtp_to_email": "To Email (Notification Recipient)",
-  "settings.smtp_to_email_help": "This is where notification emails will be sent",
+  "settings.smtp_to_email_help": "This is where notification emails will be sent. Separate multiple recipients with a comma or semicolon.",
   "settings.test_connection": "Test Connection",
   "settings.save_smtp": "Save SMTP Settings",
   "settings.pushover_notifications": "Pushover Notifications",

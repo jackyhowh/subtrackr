@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/smtp"
 	"strconv"
@@ -18,8 +19,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func splitLines(s string) []string { return strings.Split(s, "\n") }
-func trimSpace(s string) string    { return strings.TrimSpace(s) }
+func splitLines(s string) []string         { return strings.Split(s, "\n") }
+func trimSpace(s string) string            { return strings.TrimSpace(s) }
 func splitN(s, sep string, n int) []string { return strings.SplitN(s, sep, n) }
 
 type SettingsHandler struct {
@@ -85,7 +86,25 @@ func (h *SettingsHandler) SaveSMTPSettings(c *gin.Context) {
 	})
 }
 
-// TestSMTPConnection tests SMTP configuration with TLS/SSL support
+// smtpTestDialTimeout bounds how long the connection test waits for the SMTP
+// server, so a wrong host/port or a firewall drop fails fast with a clear
+// message instead of leaving the request (and the UI spinner) hanging.
+const smtpTestDialTimeout = 15 * time.Second
+
+// testSMTPError renders the SMTP test result panel for a failure. It returns
+// HTTP 200 on purpose: HTMX 1.x only swaps response bodies into the target for
+// 2xx responses, so returning 4xx/5xx here would leave the message area blank
+// and hide the error from the user.
+func (h *SettingsHandler) testSMTPError(c *gin.Context, format string, args ...interface{}) {
+	c.HTML(http.StatusOK, "smtp-message.html", gin.H{
+		"Error": fmt.Sprintf(format, args...),
+		"Type":  "error",
+	})
+}
+
+// TestSMTPConnection verifies the SMTP configuration and sends a test email to
+// the configured recipient, so a successful result confirms end-to-end delivery
+// (connection, TLS, authentication, and actual send) rather than login alone.
 func (h *SettingsHandler) TestSMTPConnection(c *gin.Context) {
 	var config models.SMTPConfig
 
@@ -104,18 +123,18 @@ func (h *SettingsHandler) TestSMTPConnection(c *gin.Context) {
 		}
 	}
 
-	// Validate required fields for testing (connection test doesn't need From/To, but we validate for consistency)
-	if config.Host == "" || config.Port == 0 || config.Username == "" || config.Password == "" {
-		c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
-			"Error": "Host, Port, Username, and Password are required for testing",
-			"Type":  "error",
-		})
+	// A test now sends a real email, so From and To are required in addition to
+	// the connection fields. The To field may contain multiple recipients
+	// separated by "," or ";".
+	if config.Host == "" || config.Port == 0 || config.Username == "" || config.Password == "" || config.From == "" || len(service.ParseEmailRecipients(config.To)) == 0 {
+		h.testSMTPError(c, "Host, Port, Username, Password, From email, and To email are all required to send a test email")
 		return
 	}
 
-	// Test connection with TLS/SSL support
-	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
-	auth := smtp.PlainAuth("", config.Username, config.Password, config.Host)
+	// Test connection with TLS/SSL support. The auth mechanism (PLAIN, or LOGIN
+	// for Office 365 / Outlook) is negotiated from the server's advertised list.
+	addr := net.JoinHostPort(config.Host, strconv.Itoa(config.Port))
+	auth := service.SMTPAuth(config.Host, config.Username, config.Password)
 
 	// Determine if this is an implicit TLS port (SMTPS)
 	isSSLPort := config.Port == 465 || config.Port == 8465 || config.Port == 443
@@ -129,32 +148,31 @@ func (h *SettingsHandler) TestSMTPConnection(c *gin.Context) {
 			ServerName: config.Host,
 		}
 
-		conn, err := tls.Dial("tcp", addr, tlsConfig)
-		if err != nil {
-			c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
-				"Error": fmt.Sprintf("Failed to connect via SSL: %v", err),
-				"Type":  "error",
-			})
+		dialer := &net.Dialer{Timeout: smtpTestDialTimeout}
+		conn, dialErr := tls.DialWithDialer(dialer, "tcp", addr, tlsConfig)
+		if dialErr != nil {
+			h.testSMTPError(c, "Failed to connect via SSL: %v", dialErr)
 			return
 		}
 
 		client, err = smtp.NewClient(conn, config.Host)
 		if err != nil {
 			conn.Close()
-			c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
-				"Error": fmt.Sprintf("Failed to create SMTP client: %v", err),
-				"Type":  "error",
-			})
+			h.testSMTPError(c, "Failed to create SMTP client: %v", err)
 			return
 		}
 	} else {
 		// Use STARTTLS (opportunistic TLS)
-		client, err = smtp.Dial(addr)
+		conn, dialErr := net.DialTimeout("tcp", addr, smtpTestDialTimeout)
+		if dialErr != nil {
+			h.testSMTPError(c, "Failed to connect: %v", dialErr)
+			return
+		}
+
+		client, err = smtp.NewClient(conn, config.Host)
 		if err != nil {
-			c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
-				"Error": fmt.Sprintf("Failed to connect: %v", err),
-				"Type":  "error",
-			})
+			conn.Close()
+			h.testSMTPError(c, "Failed to create SMTP client: %v", err)
 			return
 		}
 
@@ -165,10 +183,7 @@ func (h *SettingsHandler) TestSMTPConnection(c *gin.Context) {
 
 		if err = client.StartTLS(tlsConfig); err != nil {
 			client.Close()
-			c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
-				"Error": fmt.Sprintf("Failed to start TLS: %v", err),
-				"Type":  "error",
-			})
+			h.testSMTPError(c, "Failed to start TLS: %v", err)
 			return
 		}
 	}
@@ -177,17 +192,78 @@ func (h *SettingsHandler) TestSMTPConnection(c *gin.Context) {
 
 	// Try to authenticate
 	if err = client.Auth(auth); err != nil {
-		c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
-			"Error": fmt.Sprintf("Authentication failed: %v", err),
-			"Type":  "error",
-		})
+		h.testSMTPError(c, "Authentication failed: %v", err)
 		return
 	}
 
+	// Send an actual test email so a successful result confirms delivery.
+	if err = sendSMTPTestEmail(client, &config); err != nil {
+		h.testSMTPError(c, "Connected and authenticated, but sending the test email failed: %v", err)
+		return
+	}
+
+	// Gracefully end the session; ignore errors since the message is already sent.
+	_ = client.Quit()
+
 	c.HTML(http.StatusOK, "smtp-message.html", gin.H{
-		"Message": "SMTP connection test successful!",
+		"Message": fmt.Sprintf("Success! A test email was sent to %s.", strings.Join(service.ParseEmailRecipients(config.To), ", ")),
 		"Type":    "success",
 	})
+}
+
+// sendSMTPTestEmail sends a short test message over an already-connected and
+// authenticated SMTP client using the supplied configuration.
+func sendSMTPTestEmail(client *smtp.Client, config *models.SMTPConfig) error {
+	recipients := service.ParseEmailRecipients(config.To)
+	if err := client.Mail(config.From); err != nil {
+		return fmt.Errorf("failed to set sender: %w", err)
+	}
+	for _, rcpt := range recipients {
+		if err := client.Rcpt(rcpt); err != nil {
+			return fmt.Errorf("failed to set recipient %s: %w", rcpt, err)
+		}
+	}
+
+	writer, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("failed to get data writer: %w", err)
+	}
+
+	fromName := config.FromName
+	if fromName == "" {
+		fromName = "SubTrackr"
+	}
+
+	body := `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+	<div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+		<h2>✅ SubTrackr SMTP Test</h2>
+		<p>This is a test email confirming your SMTP settings are working correctly.</p>
+		<p>If you received this message, SubTrackr can successfully deliver renewal
+		reminders and alerts to this address.</p>
+		<p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+		This is an automated test message from SubTrackr.</p>
+	</div>
+</body>
+</html>`
+
+	message := fmt.Sprintf("From: %s <%s>\r\n", fromName, config.From)
+	message += fmt.Sprintf("To: %s\r\n", strings.Join(recipients, ", "))
+	message += "Subject: SubTrackr SMTP Test Email\r\n"
+	message += "MIME-Version: 1.0\r\n"
+	message += "Content-Type: text/html; charset=UTF-8\r\n"
+	message += "\r\n"
+	message += body
+
+	if _, err := writer.Write([]byte(message)); err != nil {
+		return fmt.Errorf("failed to write message: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to close writer: %w", err)
+	}
+	return nil
 }
 
 // UpdateNotificationSetting updates a notification preference

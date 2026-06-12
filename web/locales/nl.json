@@ -170,7 +170,7 @@
   "settings.smtp_from_email": "E-mail van afzender",
   "settings.smtp_from_name": "Afzendernaam",
   "settings.smtp_to_email": "E-mail van ontvanger (meldingsontvanger)",
-  "settings.smtp_to_email_help": "Meldingen worden naar dit adres verstuurd",
+  "settings.smtp_to_email_help": "Meldingen worden naar dit adres verstuurd. Scheid meerdere ontvangers met een komma of puntkomma.",
   "settings.test_connection": "Verbinding testen",
   "settings.save_smtp": "SMTP-instellingen opslaan",
   "settings.pushover_notifications": "Pushover-meldingen",

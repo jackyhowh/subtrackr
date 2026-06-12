@@ -170,7 +170,7 @@
   "settings.smtp_from_email": "Absender-E-Mail",
   "settings.smtp_from_name": "Absendername",
   "settings.smtp_to_email": "Empfänger-E-Mail (Benachrichtigungsempfänger)",
-  "settings.smtp_to_email_help": "An diese Adresse werden Benachrichtigungs-E-Mails gesendet",
+  "settings.smtp_to_email_help": "An diese Adresse werden Benachrichtigungs-E-Mails gesendet. Trennen Sie mehrere Empfänger mit Komma oder Semikolon.",
   "settings.test_connection": "Verbindung testen",
   "settings.save_smtp": "SMTP-Einstellungen speichern",
   "settings.pushover_notifications": "Pushover-Benachrichtigungen",

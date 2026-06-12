@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/smtp"
+	"strings"
 	"subtrackr/internal/models"
 )
 
@@ -39,18 +40,20 @@ func (e *EmailService) SendEmail(subject, body string) error {
 		return fmt.Errorf("failed to get SMTP config: %w", err)
 	}
 
-	if config.To == "" {
+	recipients := ParseEmailRecipients(config.To)
+	if len(recipients) == 0 {
 		return fmt.Errorf("no recipient email configured")
 	}
+	toHeader := strings.Join(recipients, ", ")
 
 	// Determine if this is an implicit TLS port (SMTPS)
 	isSSLPort := config.Port == 465 || config.Port == 8465 || config.Port == 443
 
-	var auth smtp.Auth
-	var addr string
-
-	auth = smtp.PlainAuth("", config.Username, config.Password, config.Host)
-	addr = fmt.Sprintf("%s:%d", config.Host, config.Port)
+	// Negotiate the auth mechanism based on what the server advertises (PLAIN,
+	// or LOGIN for Office 365 / Outlook). The actual choice happens during the
+	// handshake once the server's mechanism list is known.
+	auth := SMTPAuth(config.Host, config.Username, config.Password)
+	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
 
 	if isSSLPort {
 		// Use implicit TLS (direct SSL connection)
@@ -79,8 +82,10 @@ func (e *EmailService) SendEmail(subject, body string) error {
 		if err = client.Mail(config.From); err != nil {
 			return fmt.Errorf("failed to set sender: %w", err)
 		}
-		if err = client.Rcpt(config.To); err != nil {
-			return fmt.Errorf("failed to set recipient: %w", err)
+		for _, rcpt := range recipients {
+			if err = client.Rcpt(rcpt); err != nil {
+				return fmt.Errorf("failed to set recipient %s: %w", rcpt, err)
+			}
 		}
 
 		// Send email body
@@ -95,7 +100,7 @@ func (e *EmailService) SendEmail(subject, body string) error {
 		}
 
 		message := fmt.Sprintf("From: %s <%s>\r\n", fromName, config.From)
-		message += fmt.Sprintf("To: %s\r\n", config.To)
+		message += fmt.Sprintf("To: %s\r\n", toHeader)
 		message += fmt.Sprintf("Subject: %s\r\n", subject)
 		message += "MIME-Version: 1.0\r\n"
 		message += "Content-Type: text/html; charset=UTF-8\r\n"
@@ -136,8 +141,10 @@ func (e *EmailService) SendEmail(subject, body string) error {
 		if err = client.Mail(config.From); err != nil {
 			return fmt.Errorf("failed to set sender: %w", err)
 		}
-		if err = client.Rcpt(config.To); err != nil {
-			return fmt.Errorf("failed to set recipient: %w", err)
+		for _, rcpt := range recipients {
+			if err = client.Rcpt(rcpt); err != nil {
+				return fmt.Errorf("failed to set recipient %s: %w", rcpt, err)
+			}
 		}
 
 		// Send email body
@@ -152,7 +159,7 @@ func (e *EmailService) SendEmail(subject, body string) error {
 		}
 
 		message := fmt.Sprintf("From: %s <%s>\r\n", fromName, config.From)
-		message += fmt.Sprintf("To: %s\r\n", config.To)
+		message += fmt.Sprintf("To: %s\r\n", toHeader)
 		message += fmt.Sprintf("Subject: %s\r\n", subject)
 		message += "MIME-Version: 1.0\r\n"
 		message += "Content-Type: text/html; charset=UTF-8\r\n"
@@ -224,8 +231,8 @@ func (e *EmailService) SendHighCostAlert(subscription *models.Subscription) erro
 `
 
 	type AlertData struct {
-		Subscription        *models.Subscription
-		CurrencySymbol      string
+		Subscription         *models.Subscription
+		CurrencySymbol       string
 		FormattedRenewalDate string
 	}
 
@@ -235,8 +242,8 @@ func (e *EmailService) SendHighCostAlert(subscription *models.Subscription) erro
 	}
 
 	data := AlertData{
-		Subscription:        subscription,
-		CurrencySymbol:      currencySymbol,
+		Subscription:         subscription,
+		CurrencySymbol:       currencySymbol,
 		FormattedRenewalDate: formattedRenewal,
 	}
 
@@ -394,10 +401,10 @@ func (e *EmailService) SendCancellationReminder(subscription *models.Subscriptio
 `
 
 	type CancellationReminderData struct {
-		Subscription               *models.Subscription
-		DaysUntilCancellation      int
-		CurrencySymbol             string
-		FormattedCancellationDate  string
+		Subscription              *models.Subscription
+		DaysUntilCancellation     int
+		CurrencySymbol            string
+		FormattedCancellationDate string
 	}
 
 	var formattedCancellation string

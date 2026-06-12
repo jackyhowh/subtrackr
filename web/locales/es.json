@@ -170,7 +170,7 @@
   "settings.smtp_from_email": "Correo de origen",
   "settings.smtp_from_name": "Nombre de origen",
   "settings.smtp_to_email": "Correo destinatario (recipiente de notificaciones)",
-  "settings.smtp_to_email_help": "Aquí se enviarán los correos de notificación",
+  "settings.smtp_to_email_help": "Aquí se enviarán los correos de notificación. Separe varios destinatarios con una coma o punto y coma.",
   "settings.test_connection": "Probar conexión",
   "settings.save_smtp": "Guardar ajustes SMTP",
   "settings.pushover_notifications": "Notificaciones Pushover",
