@@ -223,6 +223,7 @@ func (h *SubscriptionHandler) Dashboard(c *gin.Context) {
 	c.HTML(http.StatusOK, "dashboard.html", gin.H{
 		"Title":          "Dashboard",
 		"CurrentPage":    "dashboard",
+		"AuthEnabled":    h.settingsService.IsAuthEnabled(),
 		"Stats":          stats,
 		"Subscriptions":  enrichedSubs,
 		"CurrencySymbol": h.settingsService.GetCurrencySymbol(),
@@ -250,6 +251,7 @@ func (h *SubscriptionHandler) SubscriptionsList(c *gin.Context) {
 	c.HTML(http.StatusOK, "subscriptions.html", gin.H{
 		"Title":          "Subscriptions",
 		"CurrentPage":    "subscriptions",
+		"AuthEnabled":    h.settingsService.IsAuthEnabled(),
 		"Subscriptions":  enrichedSubs,
 		"CurrencySymbol": h.settingsService.GetCurrencySymbol(),
 		"DarkMode":       h.settingsService.IsDarkModeEnabled(),
@@ -271,6 +273,7 @@ func (h *SubscriptionHandler) Analytics(c *gin.Context) {
 	c.HTML(http.StatusOK, "analytics.html", gin.H{
 		"Title":          "Analytics",
 		"CurrentPage":    "analytics",
+		"AuthEnabled":    h.settingsService.IsAuthEnabled(),
 		"Stats":          stats,
 		"CurrencySymbol": h.settingsService.GetCurrencySymbol(),
 		"DarkMode":       h.settingsService.IsDarkModeEnabled(),
@@ -365,6 +368,7 @@ func (h *SubscriptionHandler) Calendar(c *gin.Context) {
 	c.HTML(http.StatusOK, "calendar.html", gin.H{
 		"Title":                   "Calendar",
 		"CurrentPage":             "calendar",
+		"AuthEnabled":             h.settingsService.IsAuthEnabled(),
 		"Year":                    year,
 		"Month":                   month,
 		"MonthName":               fmt.Sprintf("%s %d", monthName, firstOfMonth.Year()),
