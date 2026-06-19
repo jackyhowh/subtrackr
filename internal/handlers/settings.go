@@ -63,7 +63,7 @@ func (h *SettingsHandler) SaveSMTPSettings(c *gin.Context) {
 
 	// Validate required fields
 	if config.Host == "" || config.Port == 0 || config.Username == "" || config.Password == "" || config.From == "" || config.To == "" {
-		c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
+		c.HTML(http.StatusOK, "smtp-message.html", gin.H{
 			"Error": "Required SMTP fields: Host, Port, Username, Password, From email, To email",
 			"Type":  "error",
 		})
@@ -73,7 +73,7 @@ func (h *SettingsHandler) SaveSMTPSettings(c *gin.Context) {
 	// Save configuration
 	err := h.service.SaveSMTPConfig(&config)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "smtp-message.html", gin.H{
+		c.HTML(http.StatusOK, "smtp-message.html", gin.H{
 			"Error": err.Error(),
 			"Type":  "error",
 		})
@@ -365,6 +365,75 @@ func (h *SettingsHandler) UpdateNotificationSetting(c *gin.Context) {
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Unknown setting"})
 	}
+}
+
+// SaveNotificationSettings persists every notification preference in one request.
+// The settings page submits these together via an explicit Save button (rather
+// than the per-control auto-save used previously) so the user gets a single,
+// visible confirmation. It renders the shared smtp-message.html partial so the
+// success/error panel matches the SMTP/Pushover/Webhook sections.
+func (h *SettingsHandler) SaveNotificationSettings(c *gin.Context) {
+	// Unchecked checkboxes are simply absent from the form body, so a missing
+	// value means "off". The checkbox inputs submit value="true" when checked.
+	renewal := c.PostForm("renewal_reminders") == "true"
+	highCost := c.PostForm("high_cost_alerts") == "true"
+	cancellation := c.PostForm("cancellation_reminders") == "true"
+
+	if err := h.service.SetBoolSetting("renewal_reminders", renewal); err != nil {
+		c.HTML(http.StatusOK, "smtp-message.html", gin.H{"Error": err.Error(), "Type": "error"})
+		return
+	}
+	if err := h.service.SetBoolSetting("high_cost_alerts", highCost); err != nil {
+		c.HTML(http.StatusOK, "smtp-message.html", gin.H{"Error": err.Error(), "Type": "error"})
+		return
+	}
+	if err := h.service.SetBoolSetting("cancellation_reminders", cancellation); err != nil {
+		c.HTML(http.StatusOK, "smtp-message.html", gin.H{"Error": err.Error(), "Type": "error"})
+		return
+	}
+
+	// High-cost threshold: validate the same 0..10000 range the per-control
+	// endpoint enforced.
+	thresholdStr := c.PostForm("high_cost_threshold")
+	threshold, err := strconv.ParseFloat(thresholdStr, 64)
+	if err != nil || threshold < 0 || threshold > 10000 {
+		c.HTML(http.StatusOK, "smtp-message.html", gin.H{
+			"Error": "Invalid high-cost threshold (must be between 0 and 10000)",
+			"Type":  "error",
+		})
+		return
+	}
+	if err := h.service.SetFloatSetting("high_cost_threshold", threshold); err != nil {
+		c.HTML(http.StatusOK, "smtp-message.html", gin.H{"Error": err.Error(), "Type": "error"})
+		return
+	}
+
+	// Reminder windows: clean each CSV the same way the per-control days_list
+	// case does (dedupe, sort descending, cap at 10) so storage stays canonical.
+	// The form field and setting key share the same name for each list.
+	for _, key := range []string{"reminder_days_list", "cancellation_reminder_days_list"} {
+		parsed := service.ParseReminderWindows(c.PostForm(key), 0)
+		if len(parsed) > 10 {
+			c.HTML(http.StatusOK, "smtp-message.html", gin.H{
+				"Error": "Up to 10 reminder windows allowed",
+				"Type":  "error",
+			})
+			return
+		}
+		cleaned := make([]string, len(parsed))
+		for i, v := range parsed {
+			cleaned[i] = strconv.Itoa(v)
+		}
+		if err := h.service.SetStringSetting(key, strings.Join(cleaned, ",")); err != nil {
+			c.HTML(http.StatusOK, "smtp-message.html", gin.H{"Error": err.Error(), "Type": "error"})
+			return
+		}
+	}
+
+	c.HTML(http.StatusOK, "smtp-message.html", gin.H{
+		"Message": "Notification settings saved successfully",
+		"Type":    "success",
+	})
 }
 
 // GetNotificationSettings returns current notification settings

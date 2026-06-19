@@ -266,6 +266,31 @@ func (r *SubscriptionRepository) GetUpcomingRenewals(days int) ([]models.Subscri
 	return subscriptions, nil
 }
 
+// GetPastDueActive returns active subscriptions whose renewal date has already
+// passed. Hooks are skipped so the AfterFind auto-advance does NOT fire during
+// the load — this lets the caller advance and persist each date explicitly
+// (and report an accurate count) instead of relying on the load side effect.
+func (r *SubscriptionRepository) GetPastDueActive() ([]models.Subscription, error) {
+	var subscriptions []models.Subscription
+	now := time.Now()
+
+	if err := r.db.Session(&gorm.Session{SkipHooks: true}).
+		Where("status = ? AND renewal_date IS NOT NULL AND renewal_date <= ?", "Active", now).
+		Find(&subscriptions).Error; err != nil {
+		return nil, err
+	}
+	return subscriptions, nil
+}
+
+// UpdateRenewalDate persists only the renewal_date column for a subscription,
+// skipping model hooks. This mirrors the lightweight UpdateColumn write used by
+// the AfterFind auto-advance and avoids re-running the full update path.
+func (r *SubscriptionRepository) UpdateRenewalDate(id uint, renewalDate time.Time) error {
+	return r.db.Model(&models.Subscription{}).
+		Where("id = ?", id).
+		UpdateColumn("renewal_date", renewalDate).Error
+}
+
 func (r *SubscriptionRepository) GetUpcomingCancellations(days int) ([]models.Subscription, error) {
 	var subscriptions []models.Subscription
 	endDate := time.Now().AddDate(0, 0, days)

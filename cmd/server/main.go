@@ -271,9 +271,9 @@ func loadTemplates(catalog *i18n.Catalog) *template.Template {
 		},
 		"statusLabel":   statusLabelFunc(catalog),
 		"scheduleLabel": scheduleLabelFunc(catalog),
-		"add": func(a, b float64) float64 { return a + b },
-		"sub": func(a, b float64) float64 { return a - b },
-		"mul": func(a, b float64) float64 { return a * b },
+		"add":           func(a, b float64) float64 { return a + b },
+		"sub":           func(a, b float64) float64 { return a - b },
+		"mul":           func(a, b float64) float64 { return a * b },
 		"div": func(a, b float64) float64 {
 			if b == 0 {
 				log.Printf("Warning: Division by zero attempted in template")
@@ -436,6 +436,7 @@ func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, sett
 		api.GET("/settings/pushover", settingsHandler.GetPushoverConfig)
 		api.POST("/settings/webhook", settingsHandler.SaveWebhookSettings)
 		api.POST("/settings/webhook/test", settingsHandler.TestWebhookConnection)
+		api.POST("/settings/notifications", settingsHandler.SaveNotificationSettings)
 		api.POST("/settings/notifications/:setting", settingsHandler.UpdateNotificationSetting)
 		api.GET("/settings/notifications", settingsHandler.GetNotificationSettings)
 		api.GET("/settings/smtp", settingsHandler.GetSMTPConfig)
@@ -514,6 +515,7 @@ func startRenewalReminderScheduler(subscriptionService *service.SubscriptionServ
 	// Run immediately on startup (after a short delay to let server initialize)
 	go func() {
 		time.Sleep(30 * time.Second) // Wait 30 seconds for server to fully start
+		rollForwardPastDueRenewals(subscriptionService)
 		checkAndSendRenewalReminders(subscriptionService, emailService, pushoverService, webhookService, settingsService)
 	}()
 
@@ -531,10 +533,28 @@ func startRenewalReminderScheduler(subscriptionService *service.SubscriptionServ
 						log.Printf("Panic in renewal reminder check: %v", r)
 					}
 				}()
+				// Roll past-due renewal dates forward first so freshly-renewed
+				// subscriptions re-enter the reminder windows below.
+				rollForwardPastDueRenewals(subscriptionService)
 				checkAndSendRenewalReminders(subscriptionService, emailService, pushoverService, webhookService, settingsService)
 			}()
 		}
 	}()
+}
+
+// rollForwardPastDueRenewals advances renewal dates that have passed for active
+// subscriptions. It runs unconditionally (independent of whether reminders are
+// enabled) so renewal dates stay current for the dashboard and so reminders
+// re-arm each billing cycle without requiring the UI to be opened.
+func rollForwardPastDueRenewals(subscriptionService *service.SubscriptionService) {
+	advanced, err := subscriptionService.RollForwardPastDueRenewals()
+	if err != nil {
+		log.Printf("Error rolling forward past-due renewal dates: %v", err)
+		return
+	}
+	if advanced > 0 {
+		log.Printf("Rolled forward %d past-due renewal date(s)", advanced)
+	}
 }
 
 // checkAndSendRenewalReminders checks for subscriptions needing reminders and sends emails and Pushover notifications

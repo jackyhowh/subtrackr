@@ -217,6 +217,26 @@ func (s *Subscription) BeforeUpdate(tx *gorm.DB) error {
 	return nil
 }
 
+// AdvancePastDueRenewal rolls the renewal date forward to the next future
+// occurrence when it has already passed for an active subscription. It mirrors
+// the AfterFind auto-advance (Issue #29) but can be invoked explicitly by the
+// daily roll-forward maintenance job, so "set and forget" subscriptions that
+// are never loaded through the UI still keep their renewal dates current and
+// continue to generate reminders across billing cycles. Returns true if the
+// renewal date actually changed.
+func (s *Subscription) AdvancePastDueRenewal() bool {
+	if s.RenewalDate == nil || s.Status != "Active" {
+		return false
+	}
+	// Not past due yet — nothing to do.
+	if s.RenewalDate.After(time.Now()) {
+		return false
+	}
+	old := *s.RenewalDate
+	s.calculateNextRenewalDate()
+	return s.RenewalDate != nil && !s.RenewalDate.Equal(old)
+}
+
 // calculateNextRenewalDate calculates the next renewal date based on schedule and version.
 //
 // Version Selection Logic:

@@ -160,6 +160,31 @@ func (s *SubscriptionService) GetAllCategories() ([]models.Category, error) {
 	return s.categoryService.GetAll()
 }
 
+// RollForwardPastDueRenewals advances the renewal date of every active
+// subscription whose renewal date has already passed, persisting each change.
+// Run daily before the reminder check, it ensures "set and forget"
+// subscriptions keep generating reminders across billing cycles even when the
+// app UI (which would otherwise trigger the AfterFind auto-advance) is never
+// opened. Returns the number of subscriptions advanced.
+func (s *SubscriptionService) RollForwardPastDueRenewals() (int, error) {
+	subscriptions, err := s.repo.GetPastDueActive()
+	if err != nil {
+		return 0, err
+	}
+
+	advanced := 0
+	for i := range subscriptions {
+		sub := &subscriptions[i]
+		if sub.AdvancePastDueRenewal() {
+			if err := s.repo.UpdateRenewalDate(sub.ID, *sub.RenewalDate); err != nil {
+				return advanced, err
+			}
+			advanced++
+		}
+	}
+	return advanced, nil
+}
+
 // GetSubscriptionsNeedingReminders returns subscriptions that need renewal reminders.
 // `windows` is a list of "days before renewal" thresholds (e.g. [7,3,0]). A subscription
 // fires when daysUntil first crosses below the smallest matching window that hasn't yet

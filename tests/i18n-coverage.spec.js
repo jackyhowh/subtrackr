@@ -57,14 +57,14 @@ const pages = [
   {
     path: '/settings',
     expect: {
-      es: ['Ajustes', 'Apariencia', 'Idioma', 'Notificaciones por correo', 'Configuración SMTP', 'Notificaciones Pushover', 'Recordatorios de renovación', 'Avísame cuando', 'Aquí se enviarán', 'Probar conexión', 'Seguridad', 'Categorías', 'Claves API', 'Acerca de SubTrackr'],
-      de: ['Einstellungen', 'Erscheinungsbild', 'Sprache', 'E-Mail-Benachrichtigungen', 'SMTP-Konfiguration', 'Pushover-Benachrichtigungen', 'Verlängerungserinnerungen', 'Verbindung testen', 'Sicherheit', 'Kategorien', 'API-Schlüssel', 'Über SubTrackr'],
-      nl: ['Instellingen', 'Weergave', 'Taal', 'E-mailmeldingen', 'SMTP-configuratie', 'Pushover-meldingen', 'Verlengingsherinneringen', 'Verbinding testen', 'Beveiliging', 'Categorieën', 'API-sleutels', 'Over SubTrackr'],
+      es: ['Ajustes', 'Apariencia', 'Idioma', 'Configuración de notificaciones', 'Configuración SMTP', 'Notificaciones Pushover', 'Recordatorios de renovación', 'Avísame cuando', 'Aquí se enviarán', 'Probar conexión', 'Seguridad', 'Categorías', 'Claves API', 'Acerca de SubTrackr'],
+      de: ['Einstellungen', 'Erscheinungsbild', 'Sprache', 'Benachrichtigungseinstellungen', 'SMTP-Konfiguration', 'Pushover-Benachrichtigungen', 'Verlängerungserinnerungen', 'Verbindung testen', 'Sicherheit', 'Kategorien', 'API-Schlüssel', 'Über SubTrackr'],
+      nl: ['Instellingen', 'Weergave', 'Taal', 'Meldingsinstellingen', 'SMTP-configuratie', 'Pushover-meldingen', 'Verlengingsherinneringen', 'Verbinding testen', 'Beveiliging', 'Categorieën', 'API-sleutels', 'Over SubTrackr'],
     },
     forbid: {
-      es: ['Email Notifications', 'SMTP Configuration', 'Pushover Notifications', 'High Cost Alerts', 'High Cost Threshold', 'Test Connection', 'Save SMTP Settings', 'Get notified before subscriptions', 'Alert when adding'],
-      de: ['Email Notifications', 'SMTP Configuration', 'Pushover Notifications', 'High Cost Alerts', 'High Cost Threshold', 'Test Connection', 'Save SMTP Settings', 'Get notified before subscriptions', 'Alert when adding'],
-      nl: ['Email Notifications', 'SMTP Configuration', 'Pushover Notifications', 'High Cost Alerts', 'High Cost Threshold', 'Test Connection', 'Save SMTP Settings', 'Get notified before subscriptions', 'Alert when adding'],
+      es: ['Notification Settings', 'SMTP Configuration', 'Pushover Notifications', 'High Cost Alerts', 'High Cost Threshold', 'Test Connection', 'Save SMTP Settings', 'Get notified before subscriptions', 'Alert when adding'],
+      de: ['Notification Settings', 'SMTP Configuration', 'Pushover Notifications', 'High Cost Alerts', 'High Cost Threshold', 'Test Connection', 'Save SMTP Settings', 'Get notified before subscriptions', 'Alert when adding'],
+      nl: ['Notification Settings', 'SMTP Configuration', 'Pushover Notifications', 'High Cost Alerts', 'High Cost Threshold', 'Test Connection', 'Save SMTP Settings', 'Get notified before subscriptions', 'Alert when adding'],
     },
   },
   {

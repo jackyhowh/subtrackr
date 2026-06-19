@@ -209,6 +209,76 @@ func TestSubscriptionService_GetSubscriptionsNeedingReminders(t *testing.T) {
 	}
 }
 
+func TestSubscriptionService_RollForwardPastDueRenewals(t *testing.T) {
+	db := setupRenewalReminderTestDB(t)
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	categoryRepo := repository.NewCategoryRepository(db)
+	categoryService := NewCategoryService(categoryRepo)
+	subscriptionService := NewSubscriptionService(subscriptionRepo, categoryService)
+
+	now := time.Now()
+
+	// Active annual subscription whose first anniversary just passed — this is the
+	// "set and forget" case that previously got stuck because the reminder query
+	// excludes past-due dates and the UI is never opened.
+	pastDue := models.Subscription{
+		Name:        "Past Due Annual",
+		Cost:        99.00,
+		Schedule:    "Annual",
+		Status:      "Active",
+		StartDate:   timePtr(now.AddDate(-1, 0, -1)), // ~1 year and 1 day ago
+		RenewalDate: timePtr(now.AddDate(0, 0, -1)),  // anniversary passed yesterday
+	}
+	// Active subscription renewing in the future — must be left untouched.
+	future := models.Subscription{
+		Name:        "Future Monthly",
+		Cost:        10.00,
+		Schedule:    "Monthly",
+		Status:      "Active",
+		RenewalDate: timePtr(now.AddDate(0, 0, 5)),
+	}
+	// Cancelled but past due — must NOT be advanced.
+	cancelled := models.Subscription{
+		Name:        "Cancelled Annual",
+		Cost:        50.00,
+		Schedule:    "Annual",
+		Status:      "Cancelled",
+		RenewalDate: timePtr(now.AddDate(0, 0, -2)),
+	}
+
+	for _, sub := range []*models.Subscription{&pastDue, &future, &cancelled} {
+		assert.NoError(t, db.Create(sub).Error, "failed to create test subscription")
+	}
+	futureDateBefore := *future.RenewalDate
+	cancelledDateBefore := *cancelled.RenewalDate
+
+	advanced, err := subscriptionService.RollForwardPastDueRenewals()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, advanced, "only the active past-due subscription should be advanced")
+
+	// No active subscription should remain past due (SkipHooks load so AfterFind
+	// can't mask the result by advancing on read).
+	remaining, err := subscriptionRepo.GetPastDueActive()
+	assert.NoError(t, err)
+	assert.Empty(t, remaining, "no active subscription should remain past due after roll-forward")
+
+	// The past-due annual sub is now in the future...
+	gotPastDue, err := subscriptionRepo.GetByID(pastDue.ID)
+	assert.NoError(t, err)
+	assert.NotNil(t, gotPastDue.RenewalDate)
+	assert.True(t, gotPastDue.RenewalDate.After(now), "past-due renewal date should be rolled into the future")
+
+	// ...the future-dated sub is unchanged...
+	gotFuture, err := subscriptionRepo.GetByID(future.ID)
+	assert.NoError(t, err)
+	assert.True(t, gotFuture.RenewalDate.Equal(futureDateBefore), "future renewal date should be untouched")
+
+	// ...and the cancelled sub is unchanged despite being past due.
+	gotCancelled, err := subscriptionRepo.GetByID(cancelled.ID)
+	assert.NoError(t, err)
+	assert.True(t, gotCancelled.RenewalDate.Equal(cancelledDateBefore), "cancelled renewal date should be untouched")
+}
+
 func TestEmailService_SendRenewalReminder_Disabled(t *testing.T) {
 	db := setupRenewalReminderTestDB(t)
 	settingsRepo := repository.NewSettingsRepository(db)
