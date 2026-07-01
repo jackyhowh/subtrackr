@@ -42,6 +42,7 @@ func newReminderTestRouter(t *testing.T) (*gin.Engine, *service.SubscriptionServ
 		nil, // emailService — only used on high-cost transition
 		nil, // pushoverService
 		nil, // webhookService
+		nil, // telegramService
 		nil, // logoService — only used when a URL is set
 		categoryService,
 		nil, // tagService — only used when tags are submitted

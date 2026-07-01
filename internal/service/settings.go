@@ -559,3 +559,26 @@ func (s *SettingsService) GetWebhookConfig() (*models.WebhookConfig, error) {
 	}
 	return &config, nil
 }
+
+// SaveTelegramConfig saves Telegram configuration
+func (s *SettingsService) SaveTelegramConfig(config *models.TelegramConfig) error {
+	data, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	return s.repo.Set("telegram_config", string(data))
+}
+
+// GetTelegramConfig retrieves Telegram configuration
+func (s *SettingsService) GetTelegramConfig() (*models.TelegramConfig, error) {
+	data, err := s.repo.Get("telegram_config")
+	if err != nil {
+		return nil, err
+	}
+	var config models.TelegramConfig
+	err = json.Unmarshal([]byte(data), &config)
+	if err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
