@@ -295,5 +295,9 @@
   "theme.dark_classic_desc": "Original dark mode",
   "theme.christmas_desc": "Festive and jolly!",
   "theme.midnight_desc": "Deep and mysterious",
-  "theme.ocean_desc": "Cool and refreshing"
+  "theme.ocean_desc": "Cool and refreshing",
+
+  "settings.import_wallos": "Import from Wallos",
+  "settings.import_wallos_help": "Import your subscriptions from a Wallos \"Export to JSON\" file. New categories are created automatically.",
+  "settings.import": "Import"
 }
