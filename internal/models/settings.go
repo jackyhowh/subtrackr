@@ -36,6 +36,12 @@ type WebhookConfig struct {
 	Headers map[string]string `json:"webhook_headers"`
 }
 
+// TelegramConfig represents Telegram notification configuration
+type TelegramConfig struct {
+	BotToken string `json:"telegram_bot_token"` // Telegram bot token from @BotFather
+	ChatID   string `json:"telegram_chat_id"`   // Target chat ID (user, group, or channel)
+}
+
 // NotificationSettings represents notification preferences
 type NotificationSettings struct {
 	RenewalReminders         bool    `json:"renewal_reminders"`
