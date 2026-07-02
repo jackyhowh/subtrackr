@@ -12,11 +12,11 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Fork PRs don't receive repository secrets, so the review action would
+    # fail with an empty token. Skip cleanly instead; fork PRs can be reviewed
+    # on demand by commenting "@claude review" (see claude.yml, which runs on
+    # issue_comment events in the base-repo context with secrets available).
+    if: github.event.pull_request.head.repo.full_name == github.repository
 
     runs-on: ubuntu-latest
     permissions:

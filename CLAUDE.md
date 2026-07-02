@@ -103,7 +103,19 @@ gh pr merge <pr-number> --merge --delete-branch
 git checkout main && git pull
 ```
 
-### 9. Publish Release
+### 9. Verify Docker Build on Main
+
+Every merge to main triggers the Docker build workflow, which pushes `:main` and `:sha-*` images. Do NOT publish the release until this build succeeds — it proves the release commit produces a working image.
+
+```bash
+# Find and watch the build triggered by the merge to main
+gh run list --workflow=docker-publish.yml --branch main --limit 1
+gh run watch <run-id> --exit-status
+```
+
+### 10. Publish Release
+
+Only after the main-branch Docker build has succeeded:
 
 ```bash
 # Publish the draft release
@@ -112,6 +124,8 @@ gh release edit vX.Y.Z --draft=false
 # Verify
 gh release view vX.Y.Z
 ```
+
+Publishing creates the version tag, which triggers a second Docker build that retags the already-verified commit with `:vX.Y.Z` and `:latest`.
 
 ## Beads Integration
 
