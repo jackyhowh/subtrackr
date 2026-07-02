@@ -460,6 +460,29 @@
                         <div id="restore-message" class="mt-2 text-sm"></div>
                     </div>
 
+                    <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200">{{t .Lang "settings.import_wallos"}}</h4>
+                                <p class="text-sm text-blue-800 dark:text-blue-300">{{t .Lang "settings.import_wallos_help"}}</p>
+                            </div>
+                        </div>
+                        <form id="wallos-form" enctype="multipart/form-data" onsubmit="submitWallosImport(event)">
+                            <div class="flex items-center gap-3">
+                                <input type="file" name="wallos_file" id="wallos_file" accept=".json" required
+                                    class="text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-100 file:text-blue-700 dark:file:bg-blue-800 dark:file:text-blue-200 hover:file:bg-blue-200 dark:hover:file:bg-blue-700">
+                                <select name="mode" class="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2">
+                                    <option value="merge">{{t .Lang "settings.restore_merge"}}</option>
+                                    <option value="replace">{{t .Lang "settings.restore_replace"}}</option>
+                                </select>
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 whitespace-nowrap">
+                                    {{t .Lang "settings.import"}}
+                                </button>
+                            </div>
+                        </form>
+                        <div id="wallos-message" class="mt-2 text-sm"></div>
+                    </div>
+
                     <div class="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                         <div>
                             <h4 class="text-sm font-medium text-red-800 dark:text-red-200">{{t .Lang "settings.clear_all"}}</h4>
@@ -1423,6 +1446,48 @@
             })
             .catch(() => {
                 msgDiv.textContent = 'Failed to restore backup';
+                msgDiv.className = 'mt-2 text-sm text-red-600 dark:text-red-400';
+            });
+        }
+
+        function submitWallosImport(event) {
+            event.preventDefault();
+            const form = document.getElementById('wallos-form');
+            const formData = new FormData(form);
+            const msgDiv = document.getElementById('wallos-message');
+            const mode = formData.get('mode');
+
+            if (mode === 'replace') {
+                if (!confirm('This will replace all existing subscription data with the Wallos import. Continue?')) {
+                    return;
+                }
+            }
+
+            msgDiv.textContent = 'Importing from Wallos...';
+            msgDiv.className = 'mt-2 text-sm text-blue-600 dark:text-blue-400';
+
+            fetch('/api/import/wallos', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(r => r.json().then(data => ({status: r.status, ok: r.ok, data})))
+            .then(({status, ok, data}) => {
+                if (status === 207) {
+                    const failed = (data.errors && data.errors.length) || 0;
+                    msgDiv.textContent = data.message + ` (${failed} skipped/failed)`;
+                    msgDiv.className = 'mt-2 text-sm text-yellow-600 dark:text-yellow-400';
+                    setTimeout(() => location.reload(), 2000);
+                } else if (ok) {
+                    msgDiv.textContent = data.message;
+                    msgDiv.className = 'mt-2 text-sm text-green-600 dark:text-green-400';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    msgDiv.textContent = data.error;
+                    msgDiv.className = 'mt-2 text-sm text-red-600 dark:text-red-400';
+                }
+            })
+            .catch(() => {
+                msgDiv.textContent = 'Failed to import from Wallos';
                 msgDiv.className = 'mt-2 text-sm text-red-600 dark:text-red-400';
             });
         }

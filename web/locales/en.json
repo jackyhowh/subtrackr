@@ -346,5 +346,8 @@
   "api_docs.example_stats": "Get Statistics",
   "api_docs.response": "Response:",
   "api_docs.additional_resources": "Additional Resources",
-  "api_docs.resources_note": "For more detailed API documentation and examples, check the README file in the project repository."
+  "api_docs.resources_note": "For more detailed API documentation and examples, check the README file in the project repository.",
+  "settings.import_wallos": "Import from Wallos",
+  "settings.import_wallos_help": "Import your subscriptions from a Wallos \"Export to JSON\" file. New categories are created automatically.",
+  "settings.import": "Import"
 }

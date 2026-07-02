@@ -346,5 +346,8 @@
   "api_docs.example_stats": "Statistieken ophalen",
   "api_docs.response": "Antwoord:",
   "api_docs.additional_resources": "Aanvullende bronnen",
-  "api_docs.resources_note": "Voor uitgebreidere API-documentatie en voorbeelden, raadpleeg het README-bestand in de projectrepository."
+  "api_docs.resources_note": "Voor uitgebreidere API-documentatie en voorbeelden, raadpleeg het README-bestand in de projectrepository.",
+  "settings.import_wallos": "Importeren uit Wallos",
+  "settings.import_wallos_help": "Importeer je abonnementen uit een Wallos \"Export to JSON\"-bestand. Nieuwe categorieën worden automatisch aangemaakt.",
+  "settings.import": "Importeren"
 }
