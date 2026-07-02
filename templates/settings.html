@@ -460,6 +460,29 @@
                         <div id="restore-message" class="mt-2 text-sm"></div>
                     </div>
 
+                    <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200">{{t .Lang "settings.import_wallos"}}</h4>
+                                <p class="text-sm text-blue-800 dark:text-blue-300">{{t .Lang "settings.import_wallos_help"}}</p>
+                            </div>
+                        </div>
+                        <form id="wallos-form" enctype="multipart/form-data" onsubmit="submitWallosImport(event)">
+                            <div class="flex items-center gap-3">
+                                <input type="file" name="wallos_file" id="wallos_file" accept=".json" required
+                                    class="text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-100 file:text-blue-700 dark:file:bg-blue-800 dark:file:text-blue-200 hover:file:bg-blue-200 dark:hover:file:bg-blue-700">
+                                <select name="mode" class="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg px-3 py-2">
+                                    <option value="merge">{{t .Lang "settings.restore_merge"}}</option>
+                                    <option value="replace">{{t .Lang "settings.restore_replace"}}</option>
+                                </select>
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 whitespace-nowrap">
+                                    {{t .Lang "settings.import"}}
+                                </button>
+                            </div>
+                        </form>
+                        <div id="wallos-message" class="mt-2 text-sm"></div>
+                    </div>
+
                     <div class="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                         <div>
                             <h4 class="text-sm font-medium text-red-800 dark:text-red-200">{{t .Lang "settings.clear_all"}}</h4>
@@ -471,7 +494,7 @@
                             hx-target="body"
                             hx-swap="none"
                             class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
-                            Clear Data
+                            {{t .Lang "settings.clear_data"}}
                         </button>
                     </div>
                 </div>
@@ -772,6 +795,56 @@
                 </div>
             </div>
 
+            <!-- Telegram Notifications -->
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
+                <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.telegram_notifications"}}</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{t .Lang "settings.telegram_description"}}</p>
+
+                <!-- Telegram Settings -->
+                <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4 transition-colors duration-200">
+                    <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.telegram_configuration"}}</h4>
+                    <form id="telegram-form" hx-post="/api/settings/telegram" hx-trigger="submit" hx-target="#telegram-message" hx-swap="innerHTML">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="telegram_bot_token" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{t .Lang "settings.telegram_bot_token"}}</label>
+                                <input type="text" id="telegram_bot_token" name="telegram_bot_token" placeholder="{{t .Lang "settings.telegram_bot_token_placeholder"}}" value="{{if .TelegramConfig}}{{.TelegramConfig.BotToken}}{{end}}"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-colors duration-150">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{t .Lang "settings.telegram_bot_token_help"}} <a href="https://t.me/BotFather" target="_blank" class="text-primary hover:underline">@BotFather</a></p>
+                            </div>
+                            <div>
+                                <label for="telegram_chat_id" class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{{t .Lang "settings.telegram_chat_id"}}</label>
+                                <input type="text" id="telegram_chat_id" name="telegram_chat_id" placeholder="{{t .Lang "settings.telegram_chat_id_placeholder"}}" value="{{if .TelegramConfig}}{{.TelegramConfig.ChatID}}{{end}}"
+                                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-colors duration-150">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{t .Lang "settings.telegram_chat_id_help"}} <a href="https://t.me/userinfobot" target="_blank" class="text-primary hover:underline">@userinfobot</a></p>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div id="telegram-message"></div>
+                        </div>
+                        <div class="flex items-center justify-end">
+                            <div class="flex space-x-2">
+                                <button type="button"
+                                        id="test-telegram-btn"
+                                        hx-post="/api/settings/telegram/test"
+                                        hx-include="#telegram-form"
+                                        hx-target="#telegram-message"
+                                        hx-indicator="#telegram-spinner"
+                                        class="bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-500 flex items-center transition-colors duration-150">
+                                    <svg id="telegram-spinner" class="htmx-indicator animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700 dark:text-gray-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    {{t .Lang "settings.test_connection"}}
+                                </button>
+                                <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90">
+                                    {{t .Lang "settings.save_telegram"}}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Security Settings -->
             <div class="border-t border-gray-200 dark:border-gray-700 pt-8">
                 <h3 class="text-base font-medium text-gray-900 dark:text-white mb-4">{{t .Lang "settings.security"}}</h3>
@@ -956,7 +1029,7 @@
                 <div id="api-keys-list" class="space-y-2 mb-4">
                     <div hx-get="/api/settings/apikeys" hx-trigger="load" hx-swap="innerHTML">
                         <div class="text-center py-4 text-gray-500">
-                            Loading API keys...
+                            {{t .Lang "settings.loading_api_keys"}}
                         </div>
                     </div>
                 </div>
@@ -1017,13 +1090,13 @@
 <div id="api-docs" class="mt-6">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm transition-colors duration-200">
         <div class="p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">API Documentation</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{{t .Lang "api_docs.title"}}</h2>
             
             <div class="space-y-6">
                 <!-- Authentication -->
                 <div>
-                    <h3 class="text-md font-medium text-gray-900 dark:text-white mb-2">Authentication</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">All API requests require authentication using an API key. Include your API key in the request headers:</p>
+                    <h3 class="text-md font-medium text-gray-900 dark:text-white mb-2">{{t .Lang "api_docs.authentication"}}</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{t .Lang "api_docs.auth_intro"}}</p>
                     <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 font-mono text-sm transition-colors duration-200">
                         <div class="mb-2">
                             <span class="text-gray-500 dark:text-gray-400"># Authorization header (recommended)</span><br>
@@ -1038,45 +1111,45 @@
 
                 <!-- Endpoints -->
                 <div>
-                    <h3 class="text-md font-medium text-gray-900 dark:text-white mb-3">API Endpoints</h3>
+                    <h3 class="text-md font-medium text-gray-900 dark:text-white mb-3">{{t .Lang "api_docs.endpoints"}}</h3>
                     
                     <!-- Subscriptions -->
                     <div class="mb-4">
-                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Subscriptions</h4>
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{{t .Lang "api_docs.section_subscriptions"}}</h4>
                         <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg overflow-hidden transition-colors duration-200">
                             <table class="min-w-full">
                                 <thead class="bg-gray-100 dark:bg-gray-600">
                                     <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Method</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Endpoint</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Description</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_method"}}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_endpoint"}}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_description"}}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                                     <tr>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">GET</span></td>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">/api/v1/subscriptions</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">List all subscriptions</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.desc_list_all"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded text-xs font-medium">POST</span></td>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">/api/v1/subscriptions</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Create a new subscription</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.desc_create_new"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">GET</span></td>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">/api/v1/subscriptions/:id</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Get subscription details</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.desc_get_details"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-300 rounded text-xs font-medium">PUT</span></td>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">/api/v1/subscriptions/:id</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Update subscription</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.desc_update"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded text-xs font-medium">DELETE</span></td>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">/api/v1/subscriptions/:id</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Delete subscription</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.desc_delete"}}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1085,31 +1158,31 @@
 
                     <!-- Statistics & Export -->
                     <div>
-                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Statistics & Export</h4>
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{{t .Lang "api_docs.section_stats_export"}}</h4>
                         <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg overflow-hidden transition-colors duration-200">
                             <table class="min-w-full">
                                 <thead class="bg-gray-100 dark:bg-gray-600">
                                     <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Method</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Endpoint</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Description</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_method"}}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_endpoint"}}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_description"}}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                                     <tr>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">GET</span></td>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">/api/v1/stats</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Get subscription statistics</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.desc_get_stats"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">GET</span></td>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">/api/v1/export/csv</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Export subscriptions as CSV</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.desc_export_csv"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">GET</span></td>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">/api/v1/export/json</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Export subscriptions as JSON</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.desc_export_json"}}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1118,21 +1191,21 @@
 
                     <!-- iCal Subscription -->
                     <div>
-                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">iCal Subscription</h4>
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{{t .Lang "api_docs.section_ical"}}</h4>
                         <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg overflow-hidden transition-colors duration-200">
                             <table class="min-w-full">
                                 <thead class="bg-gray-100 dark:bg-gray-600">
                                     <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Method</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Endpoint</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Description</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_method"}}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_endpoint"}}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_description"}}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                                     <tr>
                                         <td class="px-4 py-2 text-sm"><span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">GET</span></td>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">/ical/:token</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Subscribe to iCal feed (public, token-authenticated)</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.desc_ical_feed"}}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1141,46 +1214,46 @@
 
                     <!-- MCP Server -->
                     <div>
-                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">MCP Server (AI Integration)</h4>
-                        <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">SubTrackr includes a Model Context Protocol (MCP) server that allows AI assistants like Claude to read and manage your subscriptions via natural language.</p>
+                        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{{t .Lang "api_docs.section_mcp"}}</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{t .Lang "api_docs.mcp_intro"}}</p>
                         <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg overflow-hidden transition-colors duration-200 mb-3">
                             <table class="min-w-full">
                                 <thead class="bg-gray-100 dark:bg-gray-600">
                                     <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Tool</th>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">Description</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_tool"}}</th>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-200">{{t .Lang "api_docs.col_description"}}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                                     <tr>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">list_subscriptions</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">List all subscriptions</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.tool_list"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">get_subscription</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Get subscription by ID</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.tool_get"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">create_subscription</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Create a new subscription</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.tool_create"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">update_subscription</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Update an existing subscription</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.tool_update"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">delete_subscription</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Delete a subscription</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.tool_delete"}}</td>
                                     </tr>
                                     <tr>
                                         <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-gray-100">get_stats</td>
-                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">Get subscription statistics</td>
+                                        <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{t .Lang "api_docs.tool_stats"}}</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                        <h5 class="text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">Configuration</h5>
-                        <p class="text-xs text-gray-600 dark:text-gray-300 mb-2">Add this to your Claude Desktop or Claude Code MCP config:</p>
+                        <h5 class="text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">{{t .Lang "api_docs.configuration"}}</h5>
+                        <p class="text-xs text-gray-600 dark:text-gray-300 mb-2">{{t .Lang "api_docs.mcp_config_intro"}}</p>
                         <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-xs overflow-x-auto">
 <pre>{
   "mcpServers": {
@@ -1199,12 +1272,12 @@
 
                 <!-- Example Requests -->
                 <div>
-                    <h3 class="text-md font-medium text-gray-900 dark:text-white mb-3">Example Requests</h3>
+                    <h3 class="text-md font-medium text-gray-900 dark:text-white mb-3">{{t .Lang "api_docs.example_requests"}}</h3>
                     
                     <div class="space-y-4">
                         <!-- List Subscriptions -->
                         <div>
-                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">List Subscriptions</h4>
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{{t .Lang "api_docs.example_list"}}</h4>
                             <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
                                 <div class="text-green-400">curl -H "Authorization: Bearer sk_your_api_key_here" \</div>
                                 <div class="ml-4">http://localhost:8080/api/v1/subscriptions</div>
@@ -1213,7 +1286,7 @@
 
                         <!-- Create Subscription -->
                         <div>
-                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Create Subscription</h4>
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{{t .Lang "api_docs.example_create"}}</h4>
                             <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
                                 <div class="text-green-400">curl -X POST \</div>
                                 <div class="ml-4">-H "Authorization: Bearer sk_your_api_key_here" \</div>
@@ -1231,13 +1304,13 @@
 
                         <!-- Get Statistics -->
                         <div>
-                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Get Statistics</h4>
+                            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{{t .Lang "api_docs.example_stats"}}</h4>
                             <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
                                 <div class="text-green-400">curl -H "Authorization: Bearer sk_your_api_key_here" \</div>
                                 <div class="ml-4">http://localhost:8080/api/v1/stats</div>
                             </div>
                             <div class="mt-2">
-                                <h5 class="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Response:</h5>
+                                <h5 class="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">{{t .Lang "api_docs.response"}}</h5>
                                 <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 font-mono text-xs transition-colors duration-200">
 <pre>{
   "total_count": 15,
@@ -1257,14 +1330,14 @@
 
                 <!-- Additional Resources -->
                 <div>
-                    <h3 class="text-md font-medium text-gray-900 dark:text-white mb-2">Additional Resources</h3>
+                    <h3 class="text-md font-medium text-gray-900 dark:text-white mb-2">{{t .Lang "api_docs.additional_resources"}}</h3>
                     <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 transition-colors duration-200">
                         <div class="flex items-start">
                             <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                             </svg>
                             <div class="text-sm text-blue-800 dark:text-blue-200">
-                                <p>For more detailed API documentation and examples, check the README file in the project repository.</p>
+                                <p>{{t .Lang "api_docs.resources_note"}}</p>
                                 <p class="mt-1">The test script <code class="bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded text-blue-800 dark:text-blue-200">test-api.sh</code> provides interactive examples of API usage.</p>
                             </div>
                         </div>
@@ -1373,6 +1446,48 @@
             })
             .catch(() => {
                 msgDiv.textContent = 'Failed to restore backup';
+                msgDiv.className = 'mt-2 text-sm text-red-600 dark:text-red-400';
+            });
+        }
+
+        function submitWallosImport(event) {
+            event.preventDefault();
+            const form = document.getElementById('wallos-form');
+            const formData = new FormData(form);
+            const msgDiv = document.getElementById('wallos-message');
+            const mode = formData.get('mode');
+
+            if (mode === 'replace') {
+                if (!confirm('This will replace all existing subscription data with the Wallos import. Continue?')) {
+                    return;
+                }
+            }
+
+            msgDiv.textContent = 'Importing from Wallos...';
+            msgDiv.className = 'mt-2 text-sm text-blue-600 dark:text-blue-400';
+
+            fetch('/api/import/wallos', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(r => r.json().then(data => ({status: r.status, ok: r.ok, data})))
+            .then(({status, ok, data}) => {
+                if (status === 207) {
+                    const failed = (data.errors && data.errors.length) || 0;
+                    msgDiv.textContent = data.message + ` (${failed} skipped/failed)`;
+                    msgDiv.className = 'mt-2 text-sm text-yellow-600 dark:text-yellow-400';
+                    setTimeout(() => location.reload(), 2000);
+                } else if (ok) {
+                    msgDiv.textContent = data.message;
+                    msgDiv.className = 'mt-2 text-sm text-green-600 dark:text-green-400';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    msgDiv.textContent = data.error;
+                    msgDiv.className = 'mt-2 text-sm text-red-600 dark:text-red-400';
+                }
+            })
+            .catch(() => {
+                msgDiv.textContent = 'Failed to import from Wallos';
                 msgDiv.className = 'mt-2 text-sm text-red-600 dark:text-red-400';
             });
         }

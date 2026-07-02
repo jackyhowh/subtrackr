@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -37,13 +38,14 @@ type SubscriptionHandler struct {
 	emailService    *service.EmailService
 	pushoverService *service.PushoverService
 	webhookService  *service.WebhookService
+	telegramService *service.TelegramService
 	logoService     *service.LogoService
 	categoryService *service.CategoryService
 	tagService      *service.TagService
 	i18nCatalog     *i18n.Catalog
 }
 
-func NewSubscriptionHandler(service *service.SubscriptionService, settingsService *service.SettingsService, currencyService *service.CurrencyService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, logoService *service.LogoService, categoryService *service.CategoryService, tagService *service.TagService, i18nCatalog *i18n.Catalog) *SubscriptionHandler {
+func NewSubscriptionHandler(service *service.SubscriptionService, settingsService *service.SettingsService, currencyService *service.CurrencyService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, telegramService *service.TelegramService, logoService *service.LogoService, categoryService *service.CategoryService, tagService *service.TagService, i18nCatalog *i18n.Catalog) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		service:         service,
 		settingsService: settingsService,
@@ -51,6 +53,7 @@ func NewSubscriptionHandler(service *service.SubscriptionService, settingsServic
 		emailService:    emailService,
 		pushoverService: pushoverService,
 		webhookService:  webhookService,
+		telegramService: telegramService,
 		logoService:     logoService,
 		categoryService: categoryService,
 		tagService:      tagService,
@@ -521,6 +524,15 @@ func (h *SubscriptionHandler) Settings(c *gin.Context) {
 		webhookConfigured = true
 	}
 
+	// Load Telegram config if available
+	var telegramConfig *models.TelegramConfig
+	telegramConfigured := false
+	telegramCfg, err := h.settingsService.GetTelegramConfig()
+	if err == nil && telegramCfg != nil && telegramCfg.BotToken != "" {
+		telegramConfig = telegramCfg
+		telegramConfigured = true
+	}
+
 	// Get auth settings
 	authEnabled := h.settingsService.IsAuthEnabled()
 	authUsername, _ := h.settingsService.GetAuthUsername()
@@ -563,6 +575,8 @@ func (h *SubscriptionHandler) Settings(c *gin.Context) {
 		"DateFormat":               h.settingsService.GetDateFormat(),
 		"WebhookConfig":            webhookConfig,
 		"WebhookConfigured":        webhookConfigured,
+		"TelegramConfig":           telegramConfig,
+		"TelegramConfigured":       telegramConfigured,
 		"Lang":                     h.activeLang(),
 		"Languages":                h.i18nCatalog.AvailableLanguages(),
 	})
@@ -704,6 +718,10 @@ func (h *SubscriptionHandler) CreateSubscription(c *gin.Context) {
 			// Send Webhook notification
 			if err := h.webhookService.SendHighCostAlert(subscriptionWithCategory); err != nil {
 				log.Printf("Failed to send high-cost alert webhook: %v", err)
+			}
+			// Send Telegram notification
+			if err := h.telegramService.SendHighCostAlert(subscriptionWithCategory); err != nil {
+				log.Printf("Failed to send high-cost alert Telegram notification: %v", err)
 			}
 		}
 	}
@@ -904,6 +922,10 @@ func (h *SubscriptionHandler) UpdateSubscription(c *gin.Context) {
 			// Send Webhook notification
 			if err := h.webhookService.SendHighCostAlert(subscriptionWithCategory); err != nil {
 				log.Printf("Failed to send high-cost alert webhook: %v", err)
+			}
+			// Send Telegram notification
+			if err := h.telegramService.SendHighCostAlert(subscriptionWithCategory); err != nil {
+				log.Printf("Failed to send high-cost alert Telegram notification: %v", err)
 			}
 		}
 	}
@@ -1171,6 +1193,109 @@ func (h *SubscriptionHandler) RestoreData(c *gin.Context) {
 		"message":        fmt.Sprintf("Successfully imported %d subscriptions", imported),
 		"imported_count": imported,
 		"total_in_file":  len(backup.Subscriptions),
+		"mode":           mode,
+	}
+	if len(errors) > 0 {
+		result["errors"] = errors
+		result["partial_success"] = true
+		c.JSON(http.StatusMultiStatus, result)
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// ImportWallos imports subscriptions from a Wallos "Export to JSON" file,
+// complementing the CSV/JSON/iCal export and the backup restore paths.
+func (h *SubscriptionHandler) ImportWallos(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 10<<20) // 10 MB limit
+
+	file, _, err := c.Request.FormFile("wallos_file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No Wallos export file provided or file too large (max 10 MB)"})
+		return
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to read uploaded file"})
+		return
+	}
+
+	subscriptions, warnings, err := service.NewWallosImportService().Parse(data)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if len(subscriptions) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":    "No importable subscriptions found in the Wallos export",
+			"warnings": warnings,
+		})
+		return
+	}
+
+	mode := c.PostForm("mode")
+	if mode == "" {
+		mode = "merge"
+	}
+	if mode != "replace" && mode != "merge" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid mode, must be 'replace' or 'merge'"})
+		return
+	}
+
+	if mode == "replace" {
+		existing, err := h.service.GetAll()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch existing data"})
+			return
+		}
+		for _, sub := range existing {
+			if err := h.service.Delete(sub.ID); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to clear existing data: %v", err)})
+				return
+			}
+		}
+	}
+
+	// Build a name->id map of existing categories, creating any that are missing.
+	categoryMap := make(map[string]uint)
+	categories, _ := h.categoryService.GetAll()
+	for _, cat := range categories {
+		categoryMap[cat.Name] = cat.ID
+	}
+
+	imported := 0
+	errors := append([]string{}, warnings...)
+	for _, sub := range subscriptions {
+		if sub.Category.Name != "" {
+			if catID, ok := categoryMap[sub.Category.Name]; ok {
+				sub.CategoryID = catID
+			} else {
+				newCat := &models.Category{Name: sub.Category.Name}
+				if created, err := h.categoryService.Create(newCat); err == nil {
+					categoryMap[created.Name] = created.ID
+					sub.CategoryID = created.ID
+				}
+			}
+		}
+
+		// Reset associations/identity so GORM performs a clean insert.
+		sub.ID = 0
+		sub.Category = models.Category{}
+
+		if _, err := h.service.Create(&sub); err != nil {
+			errors = append(errors, fmt.Sprintf("Failed to import '%s': %v", sub.Name, err))
+			continue
+		}
+		imported++
+	}
+
+	result := gin.H{
+		"message":        fmt.Sprintf("Successfully imported %d subscriptions from Wallos", imported),
+		"imported_count": imported,
+		"total_in_file":  len(subscriptions) + len(warnings),
 		"mode":           mode,
 	}
 	if len(errors) > 0 {

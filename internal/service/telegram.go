@@ -1,0 +1,247 @@
+package service
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"subtrackr/internal/models"
+	"time"
+)
+
+// Telegram API and retry defaults.
+const (
+	telegramAPIBaseURL     = "https://api.telegram.org"
+	telegramMaxRetries     = 3
+	telegramInitialBackoff = 500 * time.Millisecond
+)
+
+// TelegramService handles sending notifications via the Telegram Bot API.
+type TelegramService struct {
+	settingsService *SettingsService
+
+	// apiBaseURL allows overriding the Telegram API endpoint (used in tests).
+	apiBaseURL string
+	// maxRetries and initialBackoff control retry-with-backoff on transient failures.
+	maxRetries     int
+	initialBackoff time.Duration
+	httpClient     *http.Client
+}
+
+// NewTelegramService creates a new Telegram service.
+func NewTelegramService(settingsService *SettingsService) *TelegramService {
+	return &TelegramService{
+		settingsService: settingsService,
+		apiBaseURL:      telegramAPIBaseURL,
+		maxRetries:      telegramMaxRetries,
+		initialBackoff:  telegramInitialBackoff,
+		httpClient:      &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+// telegramResponse represents the JSON envelope returned by the Telegram Bot API.
+type telegramResponse struct {
+	OK          bool   `json:"ok"`
+	ErrorCode   int    `json:"error_code,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// SendNotification sends a message via Telegram, combining an optional title
+// with the body. External calls are retried with exponential backoff on
+// transient failures (network errors, HTTP 429, and 5xx responses).
+func (t *TelegramService) SendNotification(title, message string) error {
+	config, err := t.settingsService.GetTelegramConfig()
+	if err != nil {
+		return fmt.Errorf("failed to get Telegram config: %w", err)
+	}
+
+	if config.BotToken == "" || config.ChatID == "" {
+		return fmt.Errorf("Telegram not configured: bot token and chat ID required")
+	}
+
+	text := message
+	if title != "" {
+		text = title + "\n\n" + message
+	}
+
+	// Telegram Bot API sendMessage endpoint.
+	apiURL := fmt.Sprintf("%s/bot%s/sendMessage", t.apiBaseURL, config.BotToken)
+
+	formData := url.Values{}
+	formData.Set("chat_id", config.ChatID)
+	formData.Set("text", text)
+
+	if err := t.sendWithRetry(apiURL, formData.Encode()); err != nil {
+		// The bot token is part of the request URL, and transport errors
+		// (*url.Error) include the full URL in their message. Scrub the token
+		// before the error reaches server logs or HTTP responses.
+		return errors.New(strings.ReplaceAll(err.Error(), "/bot"+config.BotToken, "/bot[REDACTED]"))
+	}
+	return nil
+}
+
+// sendWithRetry attempts the request, retrying transient failures with
+// exponential backoff up to maxRetries times.
+func (t *TelegramService) sendWithRetry(apiURL, body string) error {
+	backoff := t.initialBackoff
+	if backoff <= 0 {
+		backoff = telegramInitialBackoff
+	}
+	maxRetries := t.maxRetries
+	if maxRetries < 1 {
+		maxRetries = 1
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		retryable, err := t.doSend(apiURL, body)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if !retryable || attempt == maxRetries {
+			break
+		}
+		time.Sleep(backoff)
+		backoff *= 2 // exponential backoff
+	}
+	return lastErr
+}
+
+// doSend performs a single request. It returns whether the failure is
+// retryable along with the error (nil error means success).
+func (t *TelegramService) doSend(apiURL, body string) (retryable bool, err error) {
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBufferString(body))
+	if err != nil {
+		return false, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := t.httpClient.Do(req)
+	if err != nil {
+		// Network-level errors are transient; retry.
+		return true, fmt.Errorf("failed to send Telegram notification: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var tgResp telegramResponse
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&tgResp); decodeErr != nil {
+		// Retry on 5xx/429 even if the body isn't valid JSON.
+		retryable := resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests
+		return retryable, fmt.Errorf("failed to decode Telegram response (status %d): %w", resp.StatusCode, decodeErr)
+	}
+
+	if !tgResp.OK {
+		retryable := resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests
+		desc := tgResp.Description
+		if desc == "" {
+			desc = fmt.Sprintf("Telegram API error (status %d)", resp.StatusCode)
+		}
+		return retryable, fmt.Errorf("%s", desc)
+	}
+
+	return false, nil
+}
+
+// SendHighCostAlert sends a Telegram alert when a high-cost subscription is created.
+func (t *TelegramService) SendHighCostAlert(subscription *models.Subscription) error {
+	// Check if high cost alerts are enabled
+	enabled, err := t.settingsService.GetBoolSetting("high_cost_alerts", true)
+	if err != nil || !enabled {
+		return nil // Silently skip if disabled
+	}
+
+	// Get currency symbol - use subscription's own currency if it differs from preferred
+	currencySymbol := currencySymbolForSubscription(subscription, t.settingsService)
+
+	// Build message
+	message := "⚠️ High Cost Alert\n\n"
+	message += fmt.Sprintf("Subscription: %s\n", subscription.Name)
+	message += fmt.Sprintf("Cost: %s%.2f %s\n", currencySymbol, subscription.Cost, subscription.DisplaySchedule())
+	message += fmt.Sprintf("Monthly Cost: %s%.2f\n", currencySymbol, subscription.MonthlyCost())
+	if subscription.Category.Name != "" {
+		message += fmt.Sprintf("Category: %s\n", subscription.Category.Name)
+	}
+	if subscription.RenewalDate != nil {
+		message += fmt.Sprintf("Next Renewal: %s\n", subscription.RenewalDate.Format(t.settingsService.GetGoDateFormatLong()))
+	}
+	if subscription.URL != "" {
+		message += fmt.Sprintf("URL: %s", subscription.URL)
+	}
+
+	title := fmt.Sprintf("High Cost Alert: %s", subscription.Name)
+	return t.SendNotification(title, message)
+}
+
+// SendRenewalReminder sends a Telegram reminder for an upcoming subscription renewal.
+func (t *TelegramService) SendRenewalReminder(subscription *models.Subscription, daysUntilRenewal int) error {
+	// Check if renewal reminders are enabled
+	enabled, err := t.settingsService.GetBoolSetting("renewal_reminders", false)
+	if err != nil || !enabled {
+		return nil // Silently skip if disabled
+	}
+
+	// Get currency symbol - use subscription's own currency if it differs from preferred
+	currencySymbol := currencySymbolForSubscription(subscription, t.settingsService)
+
+	// Build message
+	daysText := "days"
+	if daysUntilRenewal == 1 {
+		daysText = "day"
+	}
+	message := "🔔 Renewal Reminder\n\n"
+	message += fmt.Sprintf("Your subscription %s will renew in %d %s.\n\n", subscription.Name, daysUntilRenewal, daysText)
+	message += "Subscription Details:\n"
+	message += fmt.Sprintf("Cost: %s%.2f %s\n", currencySymbol, subscription.Cost, subscription.DisplaySchedule())
+	message += fmt.Sprintf("Monthly Cost: %s%.2f\n", currencySymbol, subscription.MonthlyCost())
+	if subscription.Category.Name != "" {
+		message += fmt.Sprintf("Category: %s\n", subscription.Category.Name)
+	}
+	if subscription.RenewalDate != nil {
+		message += fmt.Sprintf("Renewal Date: %s\n", subscription.RenewalDate.Format(t.settingsService.GetGoDateFormatLong()))
+	}
+	if subscription.URL != "" {
+		message += fmt.Sprintf("URL: %s", subscription.URL)
+	}
+
+	title := fmt.Sprintf("Renewal Reminder: %s", subscription.Name)
+	return t.SendNotification(title, message)
+}
+
+// SendCancellationReminder sends a Telegram reminder for an upcoming subscription cancellation.
+func (t *TelegramService) SendCancellationReminder(subscription *models.Subscription, daysUntilCancellation int) error {
+	// Check if cancellation reminders are enabled
+	enabled, err := t.settingsService.GetBoolSetting("cancellation_reminders", false)
+	if err != nil || !enabled {
+		return nil // Silently skip if disabled
+	}
+
+	// Get currency symbol - use subscription's own currency if it differs from preferred
+	currencySymbol := currencySymbolForSubscription(subscription, t.settingsService)
+
+	// Build message
+	daysText := "days"
+	if daysUntilCancellation == 1 {
+		daysText = "day"
+	}
+	message := "⚠️ Cancellation Reminder\n\n"
+	message += fmt.Sprintf("Your subscription %s will end in %d %s.\n\n", subscription.Name, daysUntilCancellation, daysText)
+	message += "Subscription Details:\n"
+	message += fmt.Sprintf("Cost: %s%.2f %s\n", currencySymbol, subscription.Cost, subscription.DisplaySchedule())
+	message += fmt.Sprintf("Monthly Cost: %s%.2f\n", currencySymbol, subscription.MonthlyCost())
+	if subscription.Category.Name != "" {
+		message += fmt.Sprintf("Category: %s\n", subscription.Category.Name)
+	}
+	if subscription.CancellationDate != nil {
+		message += fmt.Sprintf("Cancellation Date: %s\n", subscription.CancellationDate.Format(t.settingsService.GetGoDateFormatLong()))
+	}
+	if subscription.URL != "" {
+		message += fmt.Sprintf("URL: %s", subscription.URL)
+	}
+
+	title := fmt.Sprintf("Cancellation Reminder: %s", subscription.Name)
+	return t.SendNotification(title, message)
+}

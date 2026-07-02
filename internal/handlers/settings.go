@@ -818,6 +818,118 @@ func (h *SettingsHandler) GetPushoverConfig(c *gin.Context) {
 	})
 }
 
+// SaveTelegramSettings saves Telegram configuration
+func (h *SettingsHandler) SaveTelegramSettings(c *gin.Context) {
+	var config models.TelegramConfig
+
+	// Parse form data
+	config.BotToken = c.PostForm("telegram_bot_token")
+	config.ChatID = c.PostForm("telegram_chat_id")
+
+	// Validate required fields
+	if config.BotToken == "" || config.ChatID == "" {
+		c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
+			"Error": "Bot Token and Chat ID are required",
+			"Type":  "error",
+		})
+		return
+	}
+
+	// Save configuration
+	err := h.service.SaveTelegramConfig(&config)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "smtp-message.html", gin.H{
+			"Error": err.Error(),
+			"Type":  "error",
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "smtp-message.html", gin.H{
+		"Message": "Telegram settings saved successfully",
+		"Type":    "success",
+	})
+}
+
+// TestTelegramConnection tests Telegram configuration
+func (h *SettingsHandler) TestTelegramConnection(c *gin.Context) {
+	var config models.TelegramConfig
+
+	// Parse form data
+	config.BotToken = c.PostForm("telegram_bot_token")
+	config.ChatID = c.PostForm("telegram_chat_id")
+
+	// Validate required fields
+	if config.BotToken == "" || config.ChatID == "" {
+		c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
+			"Error": "Bot Token and Chat ID are required for testing",
+			"Type":  "error",
+		})
+		return
+	}
+
+	// Create a temporary TelegramService to test
+	telegramService := service.NewTelegramService(h.service)
+
+	// Temporarily save config for testing
+	originalConfig, _ := h.service.GetTelegramConfig()
+	defer func() {
+		var restoreErr error
+		if originalConfig != nil {
+			restoreErr = h.service.SaveTelegramConfig(originalConfig)
+		} else {
+			// No original config existed, so clear the test config by saving empty values
+			restoreErr = h.service.SaveTelegramConfig(&models.TelegramConfig{
+				BotToken: "",
+				ChatID:   "",
+			})
+		}
+		if restoreErr != nil {
+			log.Printf("Warning: failed to restore Telegram config after test: %v", restoreErr)
+		}
+	}()
+
+	// Save test config
+	if err := h.service.SaveTelegramConfig(&config); err != nil {
+		c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
+			"Error": fmt.Sprintf("Failed to save test config: %v", err),
+			"Type":  "error",
+		})
+		return
+	}
+
+	// Send test notification
+	err := telegramService.SendNotification("SubTrackr Test", "This is a test notification from SubTrackr. If you received this, your Telegram configuration is working correctly!")
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "smtp-message.html", gin.H{
+			"Error": fmt.Sprintf("Failed to send test notification: %v", err),
+			"Type":  "error",
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "smtp-message.html", gin.H{
+		"Message": "Telegram connection test successful! Check your Telegram for the test notification.",
+		"Type":    "success",
+	})
+}
+
+// GetTelegramConfig returns current Telegram configuration (without sensitive data)
+func (h *SettingsHandler) GetTelegramConfig(c *gin.Context) {
+	config, err := h.service.GetTelegramConfig()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"configured": false})
+		return
+	}
+
+	// Don't send the full token, just indicate if configured
+	c.JSON(http.StatusOK, gin.H{
+		"configured":     true,
+		"has_bot_token":  config.BotToken != "",
+		"has_chat_id":    config.ChatID != "",
+	})
+}
+
 // ToggleICalSubscription toggles iCal subscription on/off
 func (h *SettingsHandler) ToggleICalSubscription(c *gin.Context) {
 	current := h.service.IsICalSubscriptionEnabled()

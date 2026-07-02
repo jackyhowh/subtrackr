@@ -62,6 +62,7 @@ func main() {
 	emailService := service.NewEmailService(settingsService)
 	pushoverService := service.NewPushoverService(settingsService)
 	webhookService := service.NewWebhookService(settingsService)
+	telegramService := service.NewTelegramService(settingsService)
 	logoService := service.NewLogoService()
 
 	// Handle CLI commands (run before starting HTTP server)
@@ -91,7 +92,7 @@ func main() {
 	}
 
 	// Initialize handlers
-	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService, settingsService, currencyService, emailService, pushoverService, webhookService, logoService, categoryService, tagService, i18nCatalog)
+	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService, settingsService, currencyService, emailService, pushoverService, webhookService, telegramService, logoService, categoryService, tagService, i18nCatalog)
 	settingsHandler := handlers.NewSettingsHandler(settingsService, i18nCatalog)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 	authHandler := handlers.NewAuthHandler(settingsService, sessionService, emailService, i18nCatalog)
@@ -199,10 +200,10 @@ func main() {
 	// }
 
 	// Start renewal reminder scheduler
-	go startRenewalReminderScheduler(subscriptionService, emailService, pushoverService, webhookService, settingsService)
+	go startRenewalReminderScheduler(subscriptionService, emailService, pushoverService, webhookService, telegramService, settingsService)
 
 	// Start cancellation reminder scheduler
-	go startCancellationReminderScheduler(subscriptionService, emailService, pushoverService, webhookService, settingsService)
+	go startCancellationReminderScheduler(subscriptionService, emailService, pushoverService, webhookService, telegramService, settingsService)
 
 	// Start server
 	port := os.Getenv("PORT")
@@ -426,6 +427,7 @@ func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, sett
 		api.GET("/export/ical", handler.ExportICal)
 		api.GET("/backup", handler.BackupData)
 		api.POST("/restore", handler.RestoreData)
+		api.POST("/import/wallos", handler.ImportWallos)
 		api.DELETE("/clear-all", handler.ClearAllData)
 
 		// Settings routes
@@ -436,6 +438,9 @@ func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, sett
 		api.GET("/settings/pushover", settingsHandler.GetPushoverConfig)
 		api.POST("/settings/webhook", settingsHandler.SaveWebhookSettings)
 		api.POST("/settings/webhook/test", settingsHandler.TestWebhookConnection)
+		api.POST("/settings/telegram", settingsHandler.SaveTelegramSettings)
+		api.POST("/settings/telegram/test", settingsHandler.TestTelegramConnection)
+		api.GET("/settings/telegram", settingsHandler.GetTelegramConfig)
 		api.POST("/settings/notifications/:setting", settingsHandler.UpdateNotificationSetting)
 		api.GET("/settings/notifications", settingsHandler.GetNotificationSettings)
 		api.GET("/settings/smtp", settingsHandler.GetSMTPConfig)
@@ -510,11 +515,11 @@ func setupRoutes(router *gin.Engine, handler *handlers.SubscriptionHandler, sett
 
 // startRenewalReminderScheduler starts a background goroutine that checks for
 // upcoming renewals and sends reminder emails and Pushover notifications daily
-func startRenewalReminderScheduler(subscriptionService *service.SubscriptionService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, settingsService *service.SettingsService) {
+func startRenewalReminderScheduler(subscriptionService *service.SubscriptionService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, telegramService *service.TelegramService, settingsService *service.SettingsService) {
 	// Run immediately on startup (after a short delay to let server initialize)
 	go func() {
 		time.Sleep(30 * time.Second) // Wait 30 seconds for server to fully start
-		checkAndSendRenewalReminders(subscriptionService, emailService, pushoverService, webhookService, settingsService)
+		checkAndSendRenewalReminders(subscriptionService, emailService, pushoverService, webhookService, telegramService, settingsService)
 	}()
 
 	// Then run daily at midnight
@@ -531,14 +536,14 @@ func startRenewalReminderScheduler(subscriptionService *service.SubscriptionServ
 						log.Printf("Panic in renewal reminder check: %v", r)
 					}
 				}()
-				checkAndSendRenewalReminders(subscriptionService, emailService, pushoverService, webhookService, settingsService)
+				checkAndSendRenewalReminders(subscriptionService, emailService, pushoverService, webhookService, telegramService, settingsService)
 			}()
 		}
 	}()
 }
 
 // checkAndSendRenewalReminders checks for subscriptions needing reminders and sends emails and Pushover notifications
-func checkAndSendRenewalReminders(subscriptionService *service.SubscriptionService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, settingsService *service.SettingsService) {
+func checkAndSendRenewalReminders(subscriptionService *service.SubscriptionService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, telegramService *service.TelegramService, settingsService *service.SettingsService) {
 	// Check if renewal reminders are enabled
 	enabled, err := settingsService.GetBoolSetting("renewal_reminders", false)
 	if err != nil || !enabled {
@@ -574,10 +579,11 @@ func checkAndSendRenewalReminders(subscriptionService *service.SubscriptionServi
 		emailErr := emailService.SendRenewalReminder(sub, daysUntil)
 		pushoverErr := pushoverService.SendRenewalReminder(sub, daysUntil)
 		webhookErr := webhookService.SendRenewalReminder(sub, daysUntil)
+		telegramErr := telegramService.SendRenewalReminder(sub, daysUntil)
 
 		// If all fail, count as failed; otherwise consider it sent
-		if emailErr != nil && pushoverErr != nil && webhookErr != nil {
-			log.Printf("Error sending renewal reminder for subscription %s (ID: %d): email=%v, pushover=%v, webhook=%v", sub.Name, sub.ID, emailErr, pushoverErr, webhookErr)
+		if emailErr != nil && pushoverErr != nil && webhookErr != nil && telegramErr != nil {
+			log.Printf("Error sending renewal reminder for subscription %s (ID: %d): email=%v, pushover=%v, webhook=%v, telegram=%v", sub.Name, sub.ID, emailErr, pushoverErr, webhookErr, telegramErr)
 			failedCount++
 		} else {
 			// Mark reminder as sent for this renewal date and remember the window we just fired.
@@ -607,6 +613,9 @@ func checkAndSendRenewalReminders(subscriptionService *service.SubscriptionServi
 			if webhookErr != nil {
 				failed = append(failed, fmt.Sprintf("webhook=%v", webhookErr))
 			}
+			if telegramErr != nil {
+				failed = append(failed, fmt.Sprintf("telegram=%v", telegramErr))
+			}
 			if len(failed) > 0 {
 				log.Printf("Sent renewal reminder for subscription %s (renews in %d days) - some channels failed: %s", sub.Name, daysUntil, strings.Join(failed, ", "))
 			} else {
@@ -621,11 +630,11 @@ func checkAndSendRenewalReminders(subscriptionService *service.SubscriptionServi
 
 // startCancellationReminderScheduler starts a background goroutine that checks for
 // upcoming cancellations and sends reminder emails and Pushover notifications daily
-func startCancellationReminderScheduler(subscriptionService *service.SubscriptionService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, settingsService *service.SettingsService) {
+func startCancellationReminderScheduler(subscriptionService *service.SubscriptionService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, telegramService *service.TelegramService, settingsService *service.SettingsService) {
 	// Run immediately on startup (after a short delay to let server initialize)
 	go func() {
 		time.Sleep(30 * time.Second) // Wait 30 seconds for server to fully start
-		checkAndSendCancellationReminders(subscriptionService, emailService, pushoverService, webhookService, settingsService)
+		checkAndSendCancellationReminders(subscriptionService, emailService, pushoverService, webhookService, telegramService, settingsService)
 	}()
 
 	// Then run daily at midnight
@@ -642,14 +651,14 @@ func startCancellationReminderScheduler(subscriptionService *service.Subscriptio
 						log.Printf("Panic in cancellation reminder check: %v", r)
 					}
 				}()
-				checkAndSendCancellationReminders(subscriptionService, emailService, pushoverService, webhookService, settingsService)
+				checkAndSendCancellationReminders(subscriptionService, emailService, pushoverService, webhookService, telegramService, settingsService)
 			}()
 		}
 	}()
 }
 
 // checkAndSendCancellationReminders checks for subscriptions needing cancellation reminders and sends emails and Pushover notifications
-func checkAndSendCancellationReminders(subscriptionService *service.SubscriptionService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, settingsService *service.SettingsService) {
+func checkAndSendCancellationReminders(subscriptionService *service.SubscriptionService, emailService *service.EmailService, pushoverService *service.PushoverService, webhookService *service.WebhookService, telegramService *service.TelegramService, settingsService *service.SettingsService) {
 	// Check if cancellation reminders are enabled
 	enabled, err := settingsService.GetBoolSetting("cancellation_reminders", false)
 	if err != nil || !enabled {
@@ -685,10 +694,11 @@ func checkAndSendCancellationReminders(subscriptionService *service.Subscription
 		emailErr := emailService.SendCancellationReminder(sub, daysUntil)
 		pushoverErr := pushoverService.SendCancellationReminder(sub, daysUntil)
 		webhookErr := webhookService.SendCancellationReminder(sub, daysUntil)
+		telegramErr := telegramService.SendCancellationReminder(sub, daysUntil)
 
 		// If all fail, count as failed; otherwise consider it sent
-		if emailErr != nil && pushoverErr != nil && webhookErr != nil {
-			log.Printf("Error sending cancellation reminder for subscription %s (ID: %d): email=%v, pushover=%v, webhook=%v", sub.Name, sub.ID, emailErr, pushoverErr, webhookErr)
+		if emailErr != nil && pushoverErr != nil && webhookErr != nil && telegramErr != nil {
+			log.Printf("Error sending cancellation reminder for subscription %s (ID: %d): email=%v, pushover=%v, webhook=%v, telegram=%v", sub.Name, sub.ID, emailErr, pushoverErr, webhookErr, telegramErr)
 			failedCount++
 		} else {
 			// Mark reminder as sent for this cancellation date and remember the window we just fired.
@@ -717,6 +727,9 @@ func checkAndSendCancellationReminders(subscriptionService *service.Subscription
 			}
 			if webhookErr != nil {
 				failed = append(failed, fmt.Sprintf("webhook=%v", webhookErr))
+			}
+			if telegramErr != nil {
+				failed = append(failed, fmt.Sprintf("telegram=%v", telegramErr))
 			}
 			if len(failed) > 0 {
 				log.Printf("Sent cancellation reminder for subscription %s (ends in %d days) - some channels failed: %s", sub.Name, daysUntil, strings.Join(failed, ", "))
