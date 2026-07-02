@@ -3,9 +3,11 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"subtrackr/internal/models"
 	"time"
 )
@@ -72,7 +74,13 @@ func (t *TelegramService) SendNotification(title, message string) error {
 	formData.Set("chat_id", config.ChatID)
 	formData.Set("text", text)
 
-	return t.sendWithRetry(apiURL, formData.Encode())
+	if err := t.sendWithRetry(apiURL, formData.Encode()); err != nil {
+		// The bot token is part of the request URL, and transport errors
+		// (*url.Error) include the full URL in their message. Scrub the token
+		// before the error reaches server logs or HTTP responses.
+		return errors.New(strings.ReplaceAll(err.Error(), "/bot"+config.BotToken, "/bot[REDACTED]"))
+	}
+	return nil
 }
 
 // sendWithRetry attempts the request, retrying transient failures with

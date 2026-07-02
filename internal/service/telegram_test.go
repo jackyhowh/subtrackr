@@ -86,6 +86,25 @@ func TestTelegramService_SendNotification_EmptyChatID(t *testing.T) {
 	assert.Contains(t, err.Error(), "not configured", "Error should mention not configured")
 }
 
+func TestTelegramService_NetworkError_RedactsBotToken(t *testing.T) {
+	tg, settings := newTestTelegramService(t)
+
+	const token = "123456:ABC-secret-token"
+	settings.SaveTelegramConfig(&models.TelegramConfig{BotToken: token, ChatID: "123"})
+
+	// Point at a server that is already closed so the transport fails with a
+	// *url.Error, whose message embeds the full request URL (token included).
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	server.Close()
+	tg.apiBaseURL = server.URL
+	tg.maxRetries = 1
+
+	err := tg.SendNotification("Test", "Test message")
+	assert.Error(t, err, "Should return error when the API is unreachable")
+	assert.NotContains(t, err.Error(), token, "Error must not leak the bot token")
+	assert.Contains(t, err.Error(), "[REDACTED]", "Token should be redacted in the error")
+}
+
 func TestTelegramService_SendHighCostAlert_Disabled(t *testing.T) {
 	tg, settings := newTestTelegramService(t)
 	settings.SetBoolSetting("high_cost_alerts", false)

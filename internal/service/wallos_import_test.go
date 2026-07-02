@@ -154,7 +154,7 @@ func TestWallosImport_ParsePrice_Unit(t *testing.T) {
 		{"$15.99", 15.99, "USD", false},
 		{"€9,99", 9.99, "EUR", false},
 		{"£8.50", 8.50, "GBP", false},
-		{"15.99", 15.99, "", false},       // no symbol -> default currency
+		{"15.99", 15.99, "", false}, // no symbol -> default currency
 		{"$1,234.56", 1234.56, "USD", false},
 		{"1.234,56 €", 1234.56, "", false}, // trailing symbol not detected -> empty currency, amount still parsed
 		{"", 0, "", true},
